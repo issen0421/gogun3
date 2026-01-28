@@ -1,0 +1,195 @@
+body {
+    font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+    background: #f8f9fa;
+    color: #333;
+    margin: 0;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.container {
+    max-width: 800px;
+    width: 100%;
+    text-align: center;
+}
+
+h1 {
+    color: #2c3e50;
+    margin-bottom: 10px;
+    font-size: 24px;
+}
+
+.description {
+    color: #7f8c8d;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+/* 検索エリア */
+.search-box {
+    position: sticky;
+    top: 10px;
+    z-index: 100;
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    box-sizing: border-box;
+}
+
+input[type="text"] {
+    width: 90%;
+    padding: 15px;
+    font-size: 16px;
+    border: 2px solid #dfe6e9;
+    border-radius: 10px;
+    outline: none;
+    transition: border-color 0.3s;
+}
+
+input[type="text"]:focus {
+    border-color: #3498db;
+}
+
+.options {
+    margin-top: 15px;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    font-size: 14px;
+    color: #555;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    user-select: none;
+}
+
+.checkbox-label input {
+    margin-right: 8px;
+    transform: scale(1.2);
+    cursor: pointer;
+}
+
+.result-count {
+    margin-top: 15px;
+    font-size: 14px;
+    color: #95a5a6;
+}
+
+.result-area {
+    margin-top: 20px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 15px;
+    width: 100%;
+}
+
+/* カードデザイン */
+.group-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: left;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    border-top: 4px solid #3498db;
+    transition: transform 0.2s;
+    position: relative;
+}
+
+.group-card:hover {
+    transform: translateY(-3px);
+}
+
+.match-perfect {
+    border-top-color: #27ae60;
+}
+
+.match-near {
+    border-top-color: #f39c12;
+    opacity: 0.9;
+}
+
+.group-name {
+    display: block;
+    font-size: 12px;
+    color: #3498db;
+    font-weight: bold;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+.match-perfect .group-name {
+    color: #27ae60;
+}
+
+.match-near .group-name {
+    color: #e67e22;
+}
+
+.word-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.word-item {
+    background: #ebf5fb;
+    color: #2980b9;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+/* ハイライト（赤字） */
+.highlight {
+    color: #e74c3c;
+    font-weight: 900;
+    text-decoration: underline;
+}
+
+.badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    color: white;
+    font-weight: bold;
+}
+
+.badge-perfect {
+    background: #27ae60;
+}
+
+.badge-near {
+    background: #f39c12;
+}
+
+.missing-info {
+    font-size: 11px;
+    color: #e67e22;
+    margin-top: 8px;
+    font-style: italic;
+}
+
+.no-result {
+    grid-column: 1 / -1;
+    padding: 50px;
+    color: #bdc3c7;
+    font-size: 18px;
+}
+
+.loading {
+    grid-column: 1 / -1;
+    color: #3498db;
+    font-weight: bold;
+    padding: 20px;
+}
