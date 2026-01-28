@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>語群検索システム</title>
+    <!-- CSSファイルを読み込み -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+    <h1>語群検索システム</h1>
+    <p class="description">スプレッドシート連動版</p>
+
+    <div class="search-box">
+        <input type="text" id="searchInput" placeholder="ひらがなorアルファベットを入力" oninput="search()">
+        
+        <div class="options">
+            <label class="checkbox-label">
+                <input type="checkbox" id="looseMode" onchange="search()">
+                濁音・半濁音・拗音を区別しない（が＝か、っ＝つ）
+            </label>
+        </div>
+
+        <div id="resultCount" class="result-count">データを読み込み中...</div>
+    </div>
+
+    <div id="resultArea" class="result-area"></div>
+</div>
+
+<!-- JavaScriptファイルを読み込み -->
+<script src="script.js"></script>
+
+</body>
+</html>
