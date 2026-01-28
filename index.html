@@ -3,33 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>語群検索システム</title>
-    <!-- CSSファイルを読み込み -->
+    <title>語群＆漢字検索システム</title>
+    <!-- デザインの読み込み -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="container">
-    <h1>語群検索システム</h1>
-    <p class="description">スプレッドシート連動版</p>
-
-    <div class="search-box">
-        <input type="text" id="searchInput" placeholder="ひらがなorアルファベットを入力" oninput="search()">
-        
-        <div class="options">
-            <label class="checkbox-label">
-                <input type="checkbox" id="looseMode" onchange="search()">
-                濁音・半濁音・拗音を区別しない（が＝か、っ＝つ）
-            </label>
-        </div>
-
-        <div id="resultCount" class="result-count">データを読み込み中...</div>
+    <h1>検索システム</h1>
+    
+    <!-- タブボタン -->
+    <div class="tab-buttons">
+        <button class="tab-btn active" onclick="switchTab('word')">語群検索</button>
+        <button class="tab-btn" onclick="switchTab('kanji')">漢字検索</button>
     </div>
 
-    <div id="resultArea" class="result-area"></div>
+    <!-- ▼▼▼ 語群検索タブ ▼▼▼ -->
+    <div id="tab-word" class="tab-content active">
+        <p class="description">スプレッドシート連動版</p>
+        <div class="search-box">
+            <input type="text" id="searchInput" placeholder="ひらがなorアルファベットを入力" oninput="searchWords()">
+            <div class="options">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="looseMode" onchange="searchWords()">
+                    濁音・半濁音・拗音を区別しない
+                </label>
+            </div>
+            <div id="resultCount" class="result-count">データを読み込み中...</div>
+        </div>
+        <div id="resultArea" class="result-area"></div>
+    </div>
+
+    <!-- ▼▼▼ 漢字検索タブ ▼▼▼ -->
+    <div id="tab-kanji" class="tab-content">
+        <p class="description">小学校で習う漢字（1026字）の検索</p>
+        <div class="search-box">
+            <input type="text" id="kanjiInput" placeholder="部首や漢字を入力（例：言、心）" oninput="searchKanji()">
+            
+            <div class="sort-options">
+                <span>並び替え:</span>
+                <select id="sortOption" onchange="searchKanji()">
+                    <option value="grade_asc">学年順 (低→高)</option>
+                    <option value="grade_desc">学年順 (高→低)</option>
+                    <option value="stroke_asc">画数順 (少→多)</option>
+                    <option value="stroke_desc">画数順 (多→少)</option>
+                </select>
+            </div>
+
+            <div id="kanjiCount" class="result-count">全1026字から検索</div>
+        </div>
+        <div id="kanjiResultArea" class="result-area kanji-grid"></div>
+    </div>
+
 </div>
 
-<!-- JavaScriptファイルを読み込み -->
+<!-- データの読み込み -->
+<script src="kanji_data.js"></script>
+<!-- ロジックの読み込み -->
 <script src="script.js"></script>
 
 </body>
