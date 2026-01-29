@@ -145,23 +145,18 @@ select {
     position: relative;
 }
 
-.group-card:hover {
-    transform: translateY(-3px);
-}
-
-.match-perfect { border-top-color: #27ae60; }
-.match-near { border-top-color: #f39c12; }
-.match-perfect .group-name { color: #27ae60; }
-.match-near .group-name { color: #e67e22; }
-
 .group-name {
     display: block;
     font-size: 12px;
     color: #3498db;
     font-weight: bold;
     margin-bottom: 8px;
-    text-transform: uppercase;
 }
+
+.match-perfect { border-top-color: #27ae60; }
+.match-near { border-top-color: #f39c12; }
+.match-perfect .group-name { color: #27ae60; }
+.match-near .group-name { color: #e67e22; }
 
 .word-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .word-item { background: #ebf5fb; color: #2980b9; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
@@ -190,6 +185,7 @@ select {
     box-shadow: 0 2px 5px rgba(0,0,0,0.05);
     border-bottom: 3px solid #ddd;
     transition: transform 0.2s;
+    cursor: pointer; /* クリックできることを示す */
 }
 
 .kanji-card:hover { transform: translateY(-3px); border-bottom-color: #3498db; }
@@ -209,6 +205,66 @@ select {
     display: flex;
     justify-content: space-around;
 }
+
+/* ▼▼▼ モーダル（ポップアップ）のデザイン ▼▼▼ */
+.modal {
+    display: none; 
+    position: fixed; 
+    z-index: 200; 
+    left: 0;
+    top: 0;
+    width: 100%; 
+    height: 100%; 
+    overflow: auto; 
+    background-color: rgba(0,0,0,0.4); 
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 10% auto; 
+    padding: 30px;
+    border-radius: 15px;
+    width: 80%; 
+    max-width: 500px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    text-align: left;
+    position: relative;
+    animation: zoomIn 0.3s;
+}
+
+@keyframes zoomIn {
+    from {transform: scale(0.8); opacity: 0;}
+    to {transform: scale(1); opacity: 1;}
+}
+
+.close-btn {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    position: absolute;
+    top: 10px;
+    right: 20px;
+}
+
+.close-btn:hover { color: black; }
+
+/* モーダル内の詳細情報 */
+.detail-header {
+    text-align: center;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 15px;
+    margin-bottom: 15px;
+}
+.detail-char { font-size: 60px; font-weight: bold; color: #3498db; display: block; }
+.detail-meta { font-size: 14px; color: #7f8c8d; }
+.keyword-section { margin-bottom: 15px; }
+.keyword-title { font-size: 12px; font-weight: bold; color: #555; display: block; margin-bottom: 5px; }
+.keyword-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.k-tag { background: #e0f7fa; color: #006064; padding: 4px 10px; border-radius: 15px; font-size: 14px; }
+.k2-tag { background: #f3e5f5; color: #4a148c; padding: 4px 10px; border-radius: 15px; font-size: 14px; }
+.k3-tag { background: #e8f5e9; color: #1b5e20; padding: 4px 10px; border-radius: 15px; font-size: 14px; }
 
 .no-result { grid-column: 1 / -1; padding: 40px; color: #bdc3c7; font-size: 16px; }
 .loading { grid-column: 1 / -1; color: #3498db; font-weight: bold; padding: 20px; }
