@@ -25,7 +25,7 @@ function switchTab(tabName) {
 function searchKanji() {
     const input = document.getElementById('kanjiInput').value.trim();
     const sortOption = document.getElementById('sortOption').value;
-    const useExtended = document.getElementById('useExtendedSearch').checked;
+    const useExtended = document.getElementById('useExtendedSearch') ? document.getElementById('useExtendedSearch').checked : false;
     const resultArea = document.getElementById('kanjiResultArea');
     const countEl = document.getElementById('kanjiCount');
 
@@ -40,13 +40,26 @@ function searchKanji() {
     let filteredData = KANJI_DATA;
 
     if (input) {
-        filteredData = KANJI_DATA.filter(item => {
-            const matchChar = item.c.includes(input);
-            const matchK1 = item.k && item.k.some(keyword => keyword.includes(input));
-            const matchK2 = useExtended && item.k2 && item.k2.some(keyword => keyword.includes(input));
-            const matchK3 = useExtended && item.k3 && item.k3.some(keyword => keyword.includes(input));
+        // ★ここが変更点: 文字列を1文字ずつに分解し、AND検索（すべて含むか）を行う
+        const inputChars = input.split('');
 
-            return matchChar || matchK1 || matchK2 || matchK3;
+        filteredData = KANJI_DATA.filter(item => {
+            // 検索対象となるキーワードリストをまとめる
+            let keywords = [...(item.k || [])];
+            if (useExtended) {
+                if (item.k2) keywords = keywords.concat(item.k2);
+                if (item.k3) keywords = keywords.concat(item.k3);
+            }
+
+            // 入力された「すべての文字」について、条件を満たすかチェック
+            return inputChars.every(char => {
+                // 1. 漢字そのものに含まれるか
+                const matchChar = item.c.includes(char);
+                // 2. キーワードのいずれかに含まれるか
+                const matchKeyword = keywords.some(k => k.includes(char));
+                
+                return matchChar || matchKeyword;
+            });
         });
     }
 
@@ -64,7 +77,6 @@ function searchKanji() {
     filteredData.forEach(item => {
         const card = document.createElement('div');
         card.className = 'kanji-card';
-        // クリックイベントを追加
         card.onclick = () => openModal(item);
 
         const strokeDisplay = item.s > 0 ? item.s + '画' : '-';
@@ -90,7 +102,6 @@ function openModal(item) {
     const body = document.getElementById('modalBody');
     const strokeDisplay = item.s > 0 ? item.s + '画' : '画数不明';
 
-    // キーワードリストの生成
     const makeTags = (list, className) => {
         if (!list || list.length === 0) return '<span style="color:#ccc; font-size:12px;">なし</span>';
         return list.map(word => `<span class="${className}">${word}</span>`).join('');
@@ -122,7 +133,6 @@ function closeModal() {
     document.getElementById('detailModal').style.display = "none";
 }
 
-// モーダルの外側をクリックしたら閉じる
 window.onclick = function(event) {
     const modal = document.getElementById('detailModal');
     if (event.target == modal) {
@@ -131,7 +141,7 @@ window.onclick = function(event) {
 }
 
 // ------------------------------------
-// 語群検索機能
+// 語群検索機能（GAS連動）
 // ------------------------------------
 async function loadData() {
     const countEl = document.getElementById('resultCount');
