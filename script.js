@@ -25,7 +25,7 @@ function switchTab(tabName) {
 function searchKanji() {
     const input = document.getElementById('kanjiInput').value.trim();
     const sortOption = document.getElementById('sortOption').value;
-    const useExtended = document.getElementById('useExtendedSearch').checked; // ★チェック状態を取得
+    const useExtended = document.getElementById('useExtendedSearch').checked;
     const resultArea = document.getElementById('kanjiResultArea');
     const countEl = document.getElementById('kanjiCount');
 
@@ -41,14 +41,12 @@ function searchKanji() {
 
     if (input) {
         filteredData = KANJI_DATA.filter(item => {
-            // 1. 漢字そのもの(c)に含まれるか
             const matchChar = item.c.includes(input);
-            // 2. 基本キーワード(k)に含まれるか
             const matchK1 = item.k && item.k.some(keyword => keyword.includes(input));
-            // 3. ★拡張キーワード(k2)に含まれるか（チェック時のみ）
             const matchK2 = useExtended && item.k2 && item.k2.some(keyword => keyword.includes(input));
+            const matchK3 = useExtended && item.k3 && item.k3.some(keyword => keyword.includes(input));
 
-            return matchChar || matchK1 || matchK2;
+            return matchChar || matchK1 || matchK2 || matchK3;
         });
     }
 
@@ -66,6 +64,9 @@ function searchKanji() {
     filteredData.forEach(item => {
         const card = document.createElement('div');
         card.className = 'kanji-card';
+        // クリックイベントを追加
+        card.onclick = () => openModal(item);
+
         const strokeDisplay = item.s > 0 ? item.s + '画' : '-';
         
         card.innerHTML = `
@@ -80,6 +81,52 @@ function searchKanji() {
 
     if (filteredData.length === 0) {
         resultArea.innerHTML = `<div class="no-result">見つかりませんでした</div>`;
+    }
+}
+
+// --- モーダル表示機能 ---
+function openModal(item) {
+    const modal = document.getElementById('detailModal');
+    const body = document.getElementById('modalBody');
+    const strokeDisplay = item.s > 0 ? item.s + '画' : '画数不明';
+
+    // キーワードリストの生成
+    const makeTags = (list, className) => {
+        if (!list || list.length === 0) return '<span style="color:#ccc; font-size:12px;">なし</span>';
+        return list.map(word => `<span class="${className}">${word}</span>`).join('');
+    };
+
+    body.innerHTML = `
+        <div class="detail-header">
+            <span class="detail-char">${item.c}</span>
+            <div class="detail-meta">小学${item.g}年生 / ${strokeDisplay}</div>
+        </div>
+        <div class="keyword-section">
+            <span class="keyword-title">基本キーワード (k)</span>
+            <div class="keyword-tags">${makeTags(item.k, 'k-tag')}</div>
+        </div>
+        <div class="keyword-section">
+            <span class="keyword-title">拡張キーワード1 (k2)</span>
+            <div class="keyword-tags">${makeTags(item.k2, 'k2-tag')}</div>
+        </div>
+        <div class="keyword-section">
+            <span class="keyword-title">拡張キーワード2 (k3)</span>
+            <div class="keyword-tags">${makeTags(item.k3, 'k3-tag')}</div>
+        </div>
+    `;
+
+    modal.style.display = "block";
+}
+
+function closeModal() {
+    document.getElementById('detailModal').style.display = "none";
+}
+
+// モーダルの外側をクリックしたら閉じる
+window.onclick = function(event) {
+    const modal = document.getElementById('detailModal');
+    if (event.target == modal) {
+        modal.style.display = "none";
     }
 }
 
