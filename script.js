@@ -1,13 +1,14 @@
+// --- 語群検索用 ---
 // ▼▼▼ ここにGASのURLを貼り付けてください ▼▼▼
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq2lxuWtuOMpGWsc_D7MtMn0tgdVjTqE8m_7cbcguahrbkCEtd_Uw/exec"; 
 // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
 let appData = [];
 
-// 初期化処理
 window.onload = function() {
-    loadData(); // 語群データの読み込み開始
-    searchKanji(); // 漢字検索の初期化
+    loadData(); // 語群データ読み込み
+    searchWords(); // 語群検索初期化
+    searchKanji(); // 漢字検索初期化
 };
 
 // タブ切り替え
@@ -19,11 +20,75 @@ function switchTab(tabName) {
 }
 
 // ------------------------------------
-// 語群検索機能（GAS連動）
+// 漢字検索機能
+// ------------------------------------
+function searchKanji() {
+    const input = document.getElementById('kanjiInput').value.trim();
+    const sortOption = document.getElementById('sortOption').value;
+    const useExtended = document.getElementById('useExtendedSearch').checked; // ★チェック状態を取得
+    const resultArea = document.getElementById('kanjiResultArea');
+    const countEl = document.getElementById('kanjiCount');
+
+    resultArea.innerHTML = "";
+
+    // KANJI_DATAが読み込まれているか確認
+    if (typeof KANJI_DATA === 'undefined') {
+        resultArea.innerHTML = `<div class="no-result">漢字データ読み込みエラー</div>`;
+        return;
+    }
+
+    let filteredData = KANJI_DATA;
+
+    if (input) {
+        filteredData = KANJI_DATA.filter(item => {
+            // 1. 漢字そのもの(c)に含まれるか
+            const matchChar = item.c.includes(input);
+            // 2. 基本キーワード(k)に含まれるか
+            const matchK1 = item.k && item.k.some(keyword => keyword.includes(input));
+            // 3. ★拡張キーワード(k2)に含まれるか（チェック時のみ）
+            const matchK2 = useExtended && item.k2 && item.k2.some(keyword => keyword.includes(input));
+
+            return matchChar || matchK1 || matchK2;
+        });
+    }
+
+    // ソート処理
+    filteredData.sort((a, b) => {
+        if (sortOption === "grade_asc") return a.g - b.g;
+        if (sortOption === "grade_desc") return b.g - a.g;
+        if (sortOption === "stroke_asc") return a.s - b.s;
+        if (sortOption === "stroke_desc") return b.s - a.s;
+        return 0;
+    });
+
+    countEl.innerText = `ヒット: ${filteredData.length}件`;
+
+    filteredData.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'kanji-card';
+        const strokeDisplay = item.s > 0 ? item.s + '画' : '-';
+        
+        card.innerHTML = `
+            <span class="kanji-char">${item.c}</span>
+            <div class="kanji-info">
+                <span>小${item.g}</span>
+                <span>${strokeDisplay}</span>
+            </div>
+        `;
+        resultArea.appendChild(card);
+    });
+
+    if (filteredData.length === 0) {
+        resultArea.innerHTML = `<div class="no-result">見つかりませんでした</div>`;
+    }
+}
+
+// ------------------------------------
+// 語群検索機能
 // ------------------------------------
 async function loadData() {
     const countEl = document.getElementById('resultCount');
-    countEl.innerText = "スプレッドシートから読み込み中...";
+    countEl.innerText = "データ読み込み中...";
 
     try {
         const response = await fetch(GAS_URL);
@@ -149,63 +214,5 @@ function searchWords() {
     
     if (perfectMatches.length === 0 && nearMatches.length === 0) {
         resultArea.innerHTML = `<div class="no-result">条件に合う語群が見つかりませんでした。</div>`;
-    }
-}
-
-
-// ------------------------------------
-// 漢字検索機能（kanji_data.jsを利用）
-// ------------------------------------
-function searchKanji() {
-    const input = document.getElementById('kanjiInput').value.trim();
-    const sortOption = document.getElementById('sortOption').value;
-    const resultArea = document.getElementById('kanjiResultArea');
-    const countEl = document.getElementById('kanjiCount');
-
-    resultArea.innerHTML = "";
-
-    // KANJI_DATAが読み込まれているか確認
-    if (typeof KANJI_DATA === 'undefined') {
-        resultArea.innerHTML = `<div class="no-result">漢字データ読み込みエラー</div>`;
-        return;
-    }
-
-    let filteredData = KANJI_DATA;
-
-    if (input) {
-        filteredData = KANJI_DATA.filter(item => {
-            // キーワード(k)または漢字(c)そのものにヒットするか
-            return item.c.includes(input) || (item.k && item.k.some(keyword => keyword.includes(input)));
-        });
-    }
-
-    // ソート
-    filteredData.sort((a, b) => {
-        if (sortOption === "grade_asc") return a.g - b.g;
-        if (sortOption === "grade_desc") return b.g - a.g;
-        if (sortOption === "stroke_asc") return a.s - b.s;
-        if (sortOption === "stroke_desc") return b.s - a.s;
-        return 0;
-    });
-
-    countEl.innerText = `ヒット: ${filteredData.length}件`;
-
-    filteredData.forEach(item => {
-        const card = document.createElement('div');
-        card.className = 'kanji-card';
-        const strokeDisplay = item.s > 0 ? item.s + '画' : '-';
-        
-        card.innerHTML = `
-            <span class="kanji-char">${item.c}</span>
-            <div class="kanji-info">
-                <span>小${item.g}</span>
-                <span>${strokeDisplay}</span>
-            </div>
-        `;
-        resultArea.appendChild(card);
-    });
-
-    if (filteredData.length === 0) {
-        resultArea.innerHTML = `<div class="no-result">見つかりませんでした</div>`;
     }
 }
