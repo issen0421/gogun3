@@ -53,11 +53,11 @@ h1 {
 }
 
 .tab-content {
-    display: none; /* デフォルトは非表示 */
+    display: none;
 }
 
 .tab-content.active {
-    display: block; /* アクティブなタブだけ表示 */
+    display: block;
     animation: fadeIn 0.5s;
 }
 
@@ -145,18 +145,23 @@ select {
     position: relative;
 }
 
-.group-name {
-    display: block;
-    font-size: 12px;
-    color: #3498db;
-    font-weight: bold;
-    margin-bottom: 8px;
+.group-card:hover {
+    transform: translateY(-3px);
 }
 
 .match-perfect { border-top-color: #27ae60; }
 .match-near { border-top-color: #f39c12; }
 .match-perfect .group-name { color: #27ae60; }
 .match-near .group-name { color: #e67e22; }
+
+.group-name {
+    display: block;
+    font-size: 12px;
+    color: #3498db;
+    font-weight: bold;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
 
 .word-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .word-item { background: #ebf5fb; color: #2980b9; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
