@@ -20,12 +20,23 @@ function switchTab(tabName) {
 }
 
 // ------------------------------------
+// ユーティリティ関数
+// ------------------------------------
+
+// ひらがなをカタカナに変換する関数
+function hiraToKata(str) {
+    return str.replace(/[\u3041-\u3096]/g, function(match) {
+        var chr = match.charCodeAt(0) + 0x60;
+        return String.fromCharCode(chr);
+    });
+}
+
+// ------------------------------------
 // 漢字検索機能
 // ------------------------------------
 function searchKanji() {
     let rawInput = document.getElementById('kanjiInput').value.trim();
     const sortOption = document.getElementById('sortOption').value;
-    // 拡張検索のチェック状態を取得（要素がない場合はfalse）
     const checkbox = document.getElementById('useExtendedSearch');
     const useExtended = checkbox ? checkbox.checked : false;
     
@@ -43,10 +54,8 @@ function searchKanji() {
     let filteredData = KANJI_DATA;
 
     if (rawInput) {
-        // ★ここが追加機能: 入力された「ひらがな」を「カタカナ」に変換
-        const input = rawInput.replace(/[\u3041-\u3096]/g, function(match) {
-            return String.fromCharCode(match.charCodeAt(0) + 0x60);
-        });
+        // ★ここが追加機能: 入力された「ひらがな」を自動的に「カタカナ」に変換
+        const input = hiraToKata(rawInput);
 
         // 1文字ずつに分解してAND検索（すべて含むか）を行う
         const inputChars = input.split('');
