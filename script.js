@@ -23,9 +23,12 @@ function switchTab(tabName) {
 // 漢字検索機能
 // ------------------------------------
 function searchKanji() {
-    const input = document.getElementById('kanjiInput').value.trim();
+    let rawInput = document.getElementById('kanjiInput').value.trim();
     const sortOption = document.getElementById('sortOption').value;
-    const useExtended = document.getElementById('useExtendedSearch') ? document.getElementById('useExtendedSearch').checked : false;
+    // 拡張検索のチェック状態を取得（要素がない場合はfalse）
+    const checkbox = document.getElementById('useExtendedSearch');
+    const useExtended = checkbox ? checkbox.checked : false;
+    
     const resultArea = document.getElementById('kanjiResultArea');
     const countEl = document.getElementById('kanjiCount');
 
@@ -39,8 +42,13 @@ function searchKanji() {
 
     let filteredData = KANJI_DATA;
 
-    if (input) {
-        // ★ここが変更点: 文字列を1文字ずつに分解し、AND検索（すべて含むか）を行う
+    if (rawInput) {
+        // ★ここが追加機能: 入力された「ひらがな」を「カタカナ」に変換
+        const input = rawInput.replace(/[\u3041-\u3096]/g, function(match) {
+            return String.fromCharCode(match.charCodeAt(0) + 0x60);
+        });
+
+        // 1文字ずつに分解してAND検索（すべて含むか）を行う
         const inputChars = input.split('');
 
         filteredData = KANJI_DATA.filter(item => {
