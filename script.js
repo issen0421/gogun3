@@ -23,16 +23,6 @@ function switchTab(tabName) {
 }
 
 // ------------------------------------
-// ユーティリティ: ひらがな→カタカナ変換
-// ------------------------------------
-function hiraToKata(str) {
-    return str.replace(/[\u3041-\u3096]/g, function(match) {
-        var chr = match.charCodeAt(0) + 0x60;
-        return String.fromCharCode(chr);
-    });
-}
-
-// ------------------------------------
 // 漢字検索機能
 // ------------------------------------
 function searchKanji() {
