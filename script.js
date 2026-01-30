@@ -5,10 +5,8 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq2lxuW
 let appData = [];
 
 window.onload = function() {
-    loadData(); // 語群データ読み込み（GASから）
-    // 初回実行（空でもイベントをセットするため）
-    // searchWords(); 
-    // searchKanji(); 
+    loadData(); // 語群データ読み込み
+    // 初回実行は不要（データロード後に実行されるため）
 };
 
 // タブ切り替え
@@ -29,33 +27,30 @@ function hiraToKata(str) {
     });
 }
 
-// 入力欄の値を強制的にカタカナにする関数
+// 入力欄の値を強制的にカタカナにする関数（漢字検索用）
 function forceInputToKatakana(inputId) {
     const inputEl = document.getElementById(inputId);
     if (!inputEl) return "";
 
-    // カーソル位置を保存（書き換えるとカーソルが末尾に飛ぶのを防ぐため）
     const start = inputEl.selectionStart;
     const end = inputEl.selectionEnd;
 
     const originalVal = inputEl.value;
     const convertedVal = hiraToKata(originalVal);
 
-    // 変更がある場合のみ書き換え
     if (originalVal !== convertedVal) {
         inputEl.value = convertedVal;
-        // カーソル位置を復元
         inputEl.setSelectionRange(start, end);
     }
     
-    return inputEl.value.trim(); // 空白除去して返す
+    return inputEl.value.trim();
 }
 
 // ------------------------------------
 // 漢字検索機能
 // ------------------------------------
 function searchKanji() {
-    // 入力値をカタカナに変換して取得
+    // ★漢字検索だけ：入力値を強制的にカタカナに変換して取得
     const input = forceInputToKatakana('kanjiInput');
     
     const sortOption = document.getElementById('sortOption').value;
@@ -73,7 +68,6 @@ function searchKanji() {
     let filteredData = KANJI_DATA;
 
     if (input) {
-        // 1文字ずつに分解してAND検索
         const inputChars = input.split('');
 
         filteredData = KANJI_DATA.filter(item => {
@@ -91,7 +85,6 @@ function searchKanji() {
         });
     }
 
-    // ソート処理
     filteredData.sort((a, b) => {
         if (sortOption === "grade_asc") return a.g - b.g;
         if (sortOption === "grade_desc") return b.g - a.g;
@@ -161,7 +154,7 @@ window.onclick = function(event) { if (event.target == document.getElementById('
 // ------------------------------------
 async function loadData() {
     const countEl = document.getElementById('resultCount');
-    countEl.innerText = "スプレッドシートから読み込み中...";
+    countEl.innerText = "データ読み込み中...";
 
     try {
         const response = await fetch(GAS_URL);
@@ -207,10 +200,8 @@ function createHighlightedHtml(word, inputChars, looseMode) {
 }
 
 function searchWords() {
-    // 入力値をカタカナに変換して取得（語群検索はひらがな入力も想定される場合があるが、
-    // ユーザー要望の「あ→ア」はここにも適用すると便利なので適用します。
-    // もし語群検索ではひらがなを残したい場合は、ここを元の value 取得に戻してください）
-    const input = forceInputToKatakana('searchInput');
+    // ★語群検索：ここでは入力をそのまま取得する（勝手にカタカナにしない）
+    const input = document.getElementById('searchInput').value.trim();
     
     const resultArea = document.getElementById('resultArea');
     const looseMode = document.getElementById('looseMode').checked;
