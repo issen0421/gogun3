@@ -23,7 +23,7 @@ function switchTab(tabName) {
 }
 
 // ------------------------------------
-// ユーティリティ: ひらがな→カタカナ変換（現在は使用していません）
+// ユーティリティ: ひらがな→カタカナ変換
 // ------------------------------------
 function hiraToKata(str) {
     return str.replace(/[\u3041-\u3096]/g, function(match) {
@@ -39,8 +39,8 @@ function searchKanji() {
     // 画面の入力値は書き換えず、取得だけする
     const rawInput = document.getElementById('kanjiInput').value.trim();
     
-    // 【修正箇所】内部でカタカナに変換する処理を削除し、入力値をそのまま検索に使用します
-    const searchInput = rawInput;
+    // 検索用に内部でカタカナに変換したものを用意（これが「勝手にカタカナになる」部分）
+    const searchInput = hiraToKata(rawInput);
 
     const sortOption = document.getElementById('sortOption').value;
     const checkbox = document.getElementById('useExtendedSearch');
@@ -73,10 +73,10 @@ function searchKanji() {
 
             // 入力された「すべての文字」について、条件を満たすかチェック
             return inputChars.every(char => {
-                // 1. 漢字そのものに含まれるか
+                // 1. 漢字そのものに含まれるか（一応、元の入力文字でもチェック）
                 const matchChar = item.c.includes(char) || item.c.includes(rawInput);
                 
-                // 2. キーワードのいずれかに含まれるか
+                // 2. キーワードのいずれかに含まれるか（キーワードはカタカナ前提）
                 const matchKeyword = keywords.some(k => k.includes(char));
                 
                 return matchChar || matchKeyword;
@@ -117,9 +117,10 @@ function searchKanji() {
     }
 }
 
-// --- モーダル表示機能 ---
+// --- モーダル表示機能（類似漢字検索機能付き） ---
 function openModal(item) {
     const modal = document.getElementById('detailModal');
+    // モーダルがHTMLにない場合のエラー回避
     if (!modal) return;
     
     const body = document.getElementById('modalBody');
@@ -129,6 +130,58 @@ function openModal(item) {
         if (!list || list.length === 0) return '<span style="color:#ccc; font-size:12px;">なし</span>';
         return list.map(word => `<span class="${className}">${word}</span>`).join('');
     };
+
+    // ★★★ 類似漢字検索ロジック ★★★
+    let similarHtml = '';
+    // 基本キーワード(k)が登録されている場合のみ検索
+    if (item.k && item.k.length > 0) {
+        const myKeywords = item.k;
+        
+        // 全漢字の中から共通パーツを持つものを探す
+        const similarItems = KANJI_DATA.map(otherItem => {
+            if (otherItem.c === item.c) return null; // 自分自身は除外
+            if (!otherItem.k || otherItem.k.length === 0) return null; // キーワードなしは除外
+            
+            // 共通するキーワードを抽出
+            const commonKeywords = otherItem.k.filter(k => myKeywords.includes(k));
+            
+            // 2つ以上共通していれば候補とする
+            if (commonKeywords.length >= 2) {
+                return {
+                    data: otherItem,
+                    count: commonKeywords.length
+                };
+            }
+            return null;
+        }).filter(val => val !== null); // nullを取り除く
+
+        // 共通数が多い順にソート
+        similarItems.sort((a, b) => b.count - a.count);
+
+        // 表示用HTMLの作成
+        if (similarItems.length > 0) {
+            let listHtml = similarItems.map(sim => {
+                // クリックするとその漢字のモーダルを開く（再帰呼び出し）
+                // JSON.stringifyだとonclickで渡せないので、一度閉じてから検索しなおす等の挙動にするか
+                // ここではシンプルに、クリックイベントをJSで設定する形にするため、
+                // IDなどを付与するか、単にHTML生成後にイベントリスナーをつける。
+                // 簡易的に onclick="openModalByChar('漢字')" とする。
+                return `
+                    <div class="similar-card" onclick="openModalByChar('${sim.data.c}')">
+                        <span class="similar-char">${sim.data.c}</span>
+                        <span class="similar-info">共通:${sim.count}</span>
+                    </div>
+                `;
+            }).join('');
+
+            similarHtml = `
+                <div class="similar-section">
+                    <span class="similar-title">🔍 似ている漢字（共通パーツ2つ以上）</span>
+                    <div class="similar-list">${listHtml}</div>
+                </div>
+            `;
+        }
+    }
 
     body.innerHTML = `
         <div class="detail-header">
@@ -147,9 +200,18 @@ function openModal(item) {
             <span class="keyword-title">拡張キーワード2 (k3)</span>
             <div class="keyword-tags">${makeTags(item.k3, 'k3-tag')}</div>
         </div>
+        ${similarHtml}
     `;
 
     modal.style.display = "block";
+}
+
+// 漢字文字からモーダルを開くヘルパー関数（類似漢字クリック用）
+function openModalByChar(char) {
+    const item = KANJI_DATA.find(d => d.c === char);
+    if (item) {
+        openModal(item);
+    }
 }
 
 function closeModal() {
