@@ -23,7 +23,7 @@ function switchTab(tabName) {
 }
 
 // ------------------------------------
-// ユーティリティ: ひらがな→カタカナ変換
+// ユーティリティ: ひらがな→カタカナ変換（現在は使用していません）
 // ------------------------------------
 function hiraToKata(str) {
     return str.replace(/[\u3041-\u3096]/g, function(match) {
@@ -39,8 +39,8 @@ function searchKanji() {
     // 画面の入力値は書き換えず、取得だけする
     const rawInput = document.getElementById('kanjiInput').value.trim();
     
-    // 検索用に内部でカタカナに変換したものを用意
-    const searchInput = hiraToKata(rawInput);
+    // 【修正箇所】内部でカタカナに変換する処理を削除し、入力値をそのまま検索に使用します
+    const searchInput = rawInput;
 
     const sortOption = document.getElementById('sortOption').value;
     const checkbox = document.getElementById('useExtendedSearch');
@@ -73,10 +73,10 @@ function searchKanji() {
 
             // 入力された「すべての文字」について、条件を満たすかチェック
             return inputChars.every(char => {
-                // 1. 漢字そのものに含まれるか（一応、元の入力文字でもチェック）
+                // 1. 漢字そのものに含まれるか
                 const matchChar = item.c.includes(char) || item.c.includes(rawInput);
                 
-                // 2. キーワードのいずれかに含まれるか（キーワードはカタカナ前提）
+                // 2. キーワードのいずれかに含まれるか
                 const matchKeyword = keywords.some(k => k.includes(char));
                 
                 return matchChar || matchKeyword;
@@ -120,7 +120,6 @@ function searchKanji() {
 // --- モーダル表示機能 ---
 function openModal(item) {
     const modal = document.getElementById('detailModal');
-    // モーダルがHTMLにない場合のエラー回避
     if (!modal) return;
     
     const body = document.getElementById('modalBody');
