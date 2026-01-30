@@ -1,4 +1,3 @@
-// --- 語群検索用 ---
 // ▼▼▼ ここにGASのURLを貼り付けてください ▼▼▼
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq2lxuWtuOMpGWsc_D7MtMn0tgdVjTqE8m_7cbcguahrbkCEtd_Uw/exec"; 
 // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
@@ -6,9 +5,10 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq2lxuW
 let appData = [];
 
 window.onload = function() {
-    loadData(); // 語群データ読み込み
-    searchWords(); // 語群検索初期化
-    searchKanji(); // 漢字検索初期化
+    loadData(); // 語群データ読み込み（GASから）
+    // 初回実行（空でもイベントをセットするため）
+    // searchWords(); 
+    // searchKanji(); 
 };
 
 // タブ切り替え
@@ -20,10 +20,8 @@ function switchTab(tabName) {
 }
 
 // ------------------------------------
-// ユーティリティ関数
+// ユーティリティ: ひらがな→カタカナ変換
 // ------------------------------------
-
-// ひらがなをカタカナに変換する関数
 function hiraToKata(str) {
     return str.replace(/[\u3041-\u3096]/g, function(match) {
         var chr = match.charCodeAt(0) + 0x60;
@@ -31,21 +29,42 @@ function hiraToKata(str) {
     });
 }
 
+// 入力欄の値を強制的にカタカナにする関数
+function forceInputToKatakana(inputId) {
+    const inputEl = document.getElementById(inputId);
+    if (!inputEl) return "";
+
+    // カーソル位置を保存（書き換えるとカーソルが末尾に飛ぶのを防ぐため）
+    const start = inputEl.selectionStart;
+    const end = inputEl.selectionEnd;
+
+    const originalVal = inputEl.value;
+    const convertedVal = hiraToKata(originalVal);
+
+    // 変更がある場合のみ書き換え
+    if (originalVal !== convertedVal) {
+        inputEl.value = convertedVal;
+        // カーソル位置を復元
+        inputEl.setSelectionRange(start, end);
+    }
+    
+    return inputEl.value.trim(); // 空白除去して返す
+}
+
 // ------------------------------------
 // 漢字検索機能
 // ------------------------------------
 function searchKanji() {
-    let rawInput = document.getElementById('kanjiInput').value.trim();
-    const sortOption = document.getElementById('sortOption').value;
-    const checkbox = document.getElementById('useExtendedSearch');
-    const useExtended = checkbox ? checkbox.checked : false;
+    // 入力値をカタカナに変換して取得
+    const input = forceInputToKatakana('kanjiInput');
     
+    const sortOption = document.getElementById('sortOption').value;
+    const useExtended = document.getElementById('useExtendedSearch') ? document.getElementById('useExtendedSearch').checked : false;
     const resultArea = document.getElementById('kanjiResultArea');
     const countEl = document.getElementById('kanjiCount');
 
     resultArea.innerHTML = "";
 
-    // KANJI_DATAが読み込まれているか確認
     if (typeof KANJI_DATA === 'undefined') {
         resultArea.innerHTML = `<div class="no-result">漢字データ読み込みエラー</div>`;
         return;
@@ -53,28 +72,20 @@ function searchKanji() {
 
     let filteredData = KANJI_DATA;
 
-    if (rawInput) {
-        // ★ここが追加機能: 入力された「ひらがな」を自動的に「カタカナ」に変換
-        const input = hiraToKata(rawInput);
-
-        // 1文字ずつに分解してAND検索（すべて含むか）を行う
+    if (input) {
+        // 1文字ずつに分解してAND検索
         const inputChars = input.split('');
 
         filteredData = KANJI_DATA.filter(item => {
-            // 検索対象となるキーワードリストをまとめる
             let keywords = [...(item.k || [])];
             if (useExtended) {
                 if (item.k2) keywords = keywords.concat(item.k2);
                 if (item.k3) keywords = keywords.concat(item.k3);
             }
 
-            // 入力された「すべての文字」について、条件を満たすかチェック
             return inputChars.every(char => {
-                // 1. 漢字そのものに含まれるか
                 const matchChar = item.c.includes(char);
-                // 2. キーワードのいずれかに含まれるか
                 const matchKeyword = keywords.some(k => k.includes(char));
-                
                 return matchChar || matchKeyword;
             });
         });
@@ -95,7 +106,6 @@ function searchKanji() {
         const card = document.createElement('div');
         card.className = 'kanji-card';
         card.onclick = () => openModal(item);
-
         const strokeDisplay = item.s > 0 ? item.s + '画' : '-';
         
         card.innerHTML = `
@@ -118,7 +128,6 @@ function openModal(item) {
     const modal = document.getElementById('detailModal');
     const body = document.getElementById('modalBody');
     const strokeDisplay = item.s > 0 ? item.s + '画' : '画数不明';
-
     const makeTags = (list, className) => {
         if (!list || list.length === 0) return '<span style="color:#ccc; font-size:12px;">なし</span>';
         return list.map(word => `<span class="${className}">${word}</span>`).join('');
@@ -142,27 +151,17 @@ function openModal(item) {
             <div class="keyword-tags">${makeTags(item.k3, 'k3-tag')}</div>
         </div>
     `;
-
     modal.style.display = "block";
 }
-
-function closeModal() {
-    document.getElementById('detailModal').style.display = "none";
-}
-
-window.onclick = function(event) {
-    const modal = document.getElementById('detailModal');
-    if (event.target == modal) {
-        modal.style.display = "none";
-    }
-}
+function closeModal() { document.getElementById('detailModal').style.display = "none"; }
+window.onclick = function(event) { if (event.target == document.getElementById('detailModal')) closeModal(); }
 
 // ------------------------------------
 // 語群検索機能（GAS連動）
 // ------------------------------------
 async function loadData() {
     const countEl = document.getElementById('resultCount');
-    countEl.innerText = "データ読み込み中...";
+    countEl.innerText = "スプレッドシートから読み込み中...";
 
     try {
         const response = await fetch(GAS_URL);
@@ -208,7 +207,11 @@ function createHighlightedHtml(word, inputChars, looseMode) {
 }
 
 function searchWords() {
-    const input = document.getElementById('searchInput').value.trim();
+    // 入力値をカタカナに変換して取得（語群検索はひらがな入力も想定される場合があるが、
+    // ユーザー要望の「あ→ア」はここにも適用すると便利なので適用します。
+    // もし語群検索ではひらがなを残したい場合は、ここを元の value 取得に戻してください）
+    const input = forceInputToKatakana('searchInput');
+    
     const resultArea = document.getElementById('resultArea');
     const looseMode = document.getElementById('looseMode').checked;
     
@@ -251,7 +254,6 @@ function searchWords() {
     perfectMatches.sort((a, b) => a.group.words.length - b.group.words.length);
     nearMatches.sort((a, b) => a.group.words.length - b.group.words.length);
 
-    // 件数更新
     const totalCount = perfectMatches.length + nearMatches.length;
     if (totalCount > 0) {
         document.getElementById('resultCount').innerHTML = 
@@ -286,7 +288,7 @@ function searchWords() {
         resultArea.appendChild(card);
     });
     
-    if (perfectMatches.length === 0 && nearMatches.length === 0) {
+    if (totalCount === 0) {
         resultArea.innerHTML = `<div class="no-result">条件に合う語群が見つかりませんでした。</div>`;
     }
 }
