@@ -23,7 +23,7 @@ function switchTab(tabName) {
 }
 
 // ------------------------------------
-// ユーティリティ: ひらがな→カタカナ変換
+// ユーティリティ: ひらがな→カタカナ変換（現在は使用していません）
 // ------------------------------------
 function hiraToKata(str) {
     return str.replace(/[\u3041-\u3096]/g, function(match) {
@@ -39,8 +39,8 @@ function searchKanji() {
     // 画面の入力値は書き換えず、取得だけする
     const rawInput = document.getElementById('kanjiInput').value.trim();
     
-    // 検索用に内部でカタカナに変換したものを用意（これが「勝手にカタカナになる」部分）
-    const searchInput = hiraToKata(rawInput);
+    // 【修正箇所】内部でカタカナに変換する処理を削除し、入力値をそのまま検索に使用します
+    const searchInput = rawInput;
 
     const sortOption = document.getElementById('sortOption').value;
     const checkbox = document.getElementById('useExtendedSearch');
