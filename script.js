@@ -117,10 +117,9 @@ function searchKanji() {
     }
 }
 
-// --- モーダル表示機能（類似漢字検索機能付き） ---
+// --- モーダル表示機能（類似漢字検索機能付き：一致率順） ---
 function openModal(item) {
     const modal = document.getElementById('detailModal');
-    // モーダルがHTMLにない場合のエラー回避
     if (!modal) return;
     
     const body = document.getElementById('modalBody');
@@ -131,52 +130,57 @@ function openModal(item) {
         return list.map(word => `<span class="${className}">${word}</span>`).join('');
     };
 
-    // ★★★ 類似漢字検索ロジック ★★★
+    // ★★★ 類似漢字検索ロジック（一致率順） ★★★
     let similarHtml = '';
-    // 基本キーワード(k)が登録されている場合のみ検索
+    
     if (item.k && item.k.length > 0) {
         const myKeywords = item.k;
         
-        // 全漢字の中から共通パーツを持つものを探す
         const similarItems = KANJI_DATA.map(otherItem => {
             if (otherItem.c === item.c) return null; // 自分自身は除外
             if (!otherItem.k || otherItem.k.length === 0) return null; // キーワードなしは除外
             
             // 共通するキーワードを抽出
             const commonKeywords = otherItem.k.filter(k => myKeywords.includes(k));
-            
+            const commonCount = commonKeywords.length;
+            const totalKeywords = otherItem.k.length; // 相手のキーワード総数
+
             // 2つ以上共通していれば候補とする
-            if (commonKeywords.length >= 2) {
+            if (commonCount >= 2) {
+                // 一致率（割合）を計算
+                const ratio = commonCount / totalKeywords;
                 return {
                     data: otherItem,
-                    count: commonKeywords.length
+                    count: commonCount,
+                    total: totalKeywords,
+                    ratio: ratio
                 };
             }
             return null;
-        }).filter(val => val !== null); // nullを取り除く
+        }).filter(val => val !== null);
 
-        // 共通数が多い順にソート
-        similarItems.sort((a, b) => b.count - a.count);
+        // ★ソート：一致率（ratio）が高い順、同じなら共通数（count）が多い順
+        similarItems.sort((a, b) => {
+            if (b.ratio !== a.ratio) {
+                return b.ratio - a.ratio; // 割合の降順
+            }
+            return b.count - a.count; // 数の降順
+        });
 
-        // 表示用HTMLの作成
         if (similarItems.length > 0) {
             let listHtml = similarItems.map(sim => {
-                // クリックするとその漢字のモーダルを開く（再帰呼び出し）
-                // JSON.stringifyだとonclickで渡せないので、一度閉じてから検索しなおす等の挙動にするか
-                // ここではシンプルに、クリックイベントをJSで設定する形にするため、
-                // IDなどを付与するか、単にHTML生成後にイベントリスナーをつける。
-                // 簡易的に onclick="openModalByChar('漢字')" とする。
+                // 割合をパーセント表示にするか、分数にするか。ここでは分数(x/y)で表示
                 return `
                     <div class="similar-card" onclick="openModalByChar('${sim.data.c}')">
                         <span class="similar-char">${sim.data.c}</span>
-                        <span class="similar-info">共通:${sim.count}</span>
+                        <span class="similar-info">共通:${sim.count}/${sim.total}</span>
                     </div>
                 `;
             }).join('');
 
             similarHtml = `
                 <div class="similar-section">
-                    <span class="similar-title">🔍 似ている漢字（共通パーツ2つ以上）</span>
+                    <span class="similar-title">🔍 似ている漢字（一致率順）</span>
                     <div class="similar-list">${listHtml}</div>
                 </div>
             `;
@@ -206,7 +210,7 @@ function openModal(item) {
     modal.style.display = "block";
 }
 
-// 漢字文字からモーダルを開くヘルパー関数（類似漢字クリック用）
+// 漢字文字からモーダルを開くヘルパー関数
 function openModalByChar(char) {
     const item = KANJI_DATA.find(d => d.c === char);
     if (item) {
