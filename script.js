@@ -23,24 +23,13 @@ function switchTab(tabName) {
 }
 
 // ------------------------------------
-// ユーティリティ: ひらがな→カタカナ変換（現在は使用していません）
-// ------------------------------------
-function hiraToKata(str) {
-    return str.replace(/[\u3041-\u3096]/g, function(match) {
-        var chr = match.charCodeAt(0) + 0x60;
-        return String.fromCharCode(chr);
-    });
-}
-
-// ------------------------------------
 // 漢字検索機能
 // ------------------------------------
 function searchKanji() {
-    // 画面の入力値は書き換えず、取得だけする
-    const rawInput = document.getElementById('kanjiInput').value.trim();
-    
-    // 入力値をそのまま検索に使用
-    const searchInput = rawInput;
+    // 入力値を取得
+    const rawInput = document.getElementById('kanjiInput').value;
+    // 空白を除去して検索用文字列にする（誤動作防止）
+    const searchInput = rawInput.replace(/\s+/g, '');
 
     const sortOption = document.getElementById('sortOption').value;
     const checkbox = document.getElementById('useExtendedSearch');
@@ -74,12 +63,10 @@ function searchKanji() {
             // 入力された「すべての文字」について、条件を満たすかチェック
             return inputChars.every(char => {
                 // 1. 漢字そのものに含まれるか
-                const matchChar = item.c.includes(char) || item.c.includes(rawInput);
+                if (item.c.indexOf(char) !== -1) return true;
                 
                 // 2. キーワードのいずれかに含まれるか
-                const matchKeyword = keywords.some(k => k.includes(char));
-                
-                return matchChar || matchKeyword;
+                return keywords.some(k => k.indexOf(char) !== -1);
             });
         });
     }
@@ -125,9 +112,9 @@ function openModal(item) {
     const body = document.getElementById('modalBody');
     const strokeDisplay = item.s > 0 ? item.s + '画' : '画数不明';
 
-    // ★変更点：タグをクリック可能にする（onclickを追加）
     const makeTags = (list, className) => {
         if (!list || list.length === 0) return '<span style="color:#ccc; font-size:12px;">なし</span>';
+        // クリック時に検索を実行するリンクを作成
         return list.map(word => `<span class="${className} clickable-tag" onclick="searchByTag('${word}')">${word}</span>`).join('');
     };
 
@@ -139,14 +126,12 @@ function openModal(item) {
         
         const similarItems = KANJI_DATA.map(otherItem => {
             if (otherItem.c === item.c) return null; // 自分自身は除外
-            if (!otherItem.k || otherItem.k.length === 0) return null; // キーワードなしは除外
+            if (!otherItem.k || otherItem.k.length === 0) return null;
             
-            // 共通するキーワードを抽出
             const commonKeywords = otherItem.k.filter(k => myKeywords.includes(k));
             const commonCount = commonKeywords.length;
             const totalKeywords = otherItem.k.length;
 
-            // 2つ以上共通していれば候補とする
             if (commonCount >= 2) {
                 const ratio = commonCount / totalKeywords;
                 return {
@@ -159,12 +144,10 @@ function openModal(item) {
             return null;
         }).filter(val => val !== null);
 
-        // ソート：一致率（ratio）が高い順
+        // 一致率が高い順にソート
         similarItems.sort((a, b) => {
-            if (b.ratio !== a.ratio) {
-                return b.ratio - a.ratio; 
-            }
-            return b.count - a.count; 
+            if (b.ratio !== a.ratio) return b.ratio - a.ratio;
+            return b.count - a.count;
         });
 
         if (similarItems.length > 0) {
@@ -209,22 +192,16 @@ function openModal(item) {
     modal.style.display = "block";
 }
 
-// ★追加機能：タグをクリックして検索する
+// タグクリックで検索を実行する関数
 function searchByTag(tag) {
-    // モーダルを閉じる
     closeModal();
-    // 検索窓にタグの文字を入れる
     document.getElementById('kanjiInput').value = tag;
-    // 検索実行
     searchKanji();
 }
 
-// 漢字文字からモーダルを開くヘルパー関数
 function openModalByChar(char) {
     const item = KANJI_DATA.find(d => d.c === char);
-    if (item) {
-        openModal(item);
-    }
+    if (item) openModal(item);
 }
 
 function closeModal() {
