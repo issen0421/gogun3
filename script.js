@@ -39,7 +39,7 @@ function searchKanji() {
     // 画面の入力値は書き換えず、取得だけする
     const rawInput = document.getElementById('kanjiInput').value.trim();
     
-    // 【修正箇所】内部でカタカナに変換する処理を削除し、入力値をそのまま検索に使用します
+    // 入力値をそのまま検索に使用
     const searchInput = rawInput;
 
     const sortOption = document.getElementById('sortOption').value;
@@ -73,10 +73,10 @@ function searchKanji() {
 
             // 入力された「すべての文字」について、条件を満たすかチェック
             return inputChars.every(char => {
-                // 1. 漢字そのものに含まれるか（一応、元の入力文字でもチェック）
+                // 1. 漢字そのものに含まれるか
                 const matchChar = item.c.includes(char) || item.c.includes(rawInput);
                 
-                // 2. キーワードのいずれかに含まれるか（キーワードはカタカナ前提）
+                // 2. キーワードのいずれかに含まれるか
                 const matchKeyword = keywords.some(k => k.includes(char));
                 
                 return matchChar || matchKeyword;
@@ -117,7 +117,7 @@ function searchKanji() {
     }
 }
 
-// --- モーダル表示機能（類似漢字検索機能付き：一致率順） ---
+// --- モーダル表示機能 ---
 function openModal(item) {
     const modal = document.getElementById('detailModal');
     if (!modal) return;
@@ -125,12 +125,13 @@ function openModal(item) {
     const body = document.getElementById('modalBody');
     const strokeDisplay = item.s > 0 ? item.s + '画' : '画数不明';
 
+    // ★変更点：タグをクリック可能にする（onclickを追加）
     const makeTags = (list, className) => {
         if (!list || list.length === 0) return '<span style="color:#ccc; font-size:12px;">なし</span>';
-        return list.map(word => `<span class="${className}">${word}</span>`).join('');
+        return list.map(word => `<span class="${className} clickable-tag" onclick="searchByTag('${word}')">${word}</span>`).join('');
     };
 
-    // ★★★ 類似漢字検索ロジック（一致率順） ★★★
+    // 類似漢字検索ロジック（一致率順）
     let similarHtml = '';
     
     if (item.k && item.k.length > 0) {
@@ -143,11 +144,10 @@ function openModal(item) {
             // 共通するキーワードを抽出
             const commonKeywords = otherItem.k.filter(k => myKeywords.includes(k));
             const commonCount = commonKeywords.length;
-            const totalKeywords = otherItem.k.length; // 相手のキーワード総数
+            const totalKeywords = otherItem.k.length;
 
             // 2つ以上共通していれば候補とする
             if (commonCount >= 2) {
-                // 一致率（割合）を計算
                 const ratio = commonCount / totalKeywords;
                 return {
                     data: otherItem,
@@ -159,17 +159,16 @@ function openModal(item) {
             return null;
         }).filter(val => val !== null);
 
-        // ★ソート：一致率（ratio）が高い順、同じなら共通数（count）が多い順
+        // ソート：一致率（ratio）が高い順
         similarItems.sort((a, b) => {
             if (b.ratio !== a.ratio) {
-                return b.ratio - a.ratio; // 割合の降順
+                return b.ratio - a.ratio; 
             }
-            return b.count - a.count; // 数の降順
+            return b.count - a.count; 
         });
 
         if (similarItems.length > 0) {
             let listHtml = similarItems.map(sim => {
-                // 割合をパーセント表示にするか、分数にするか。ここでは分数(x/y)で表示
                 return `
                     <div class="similar-card" onclick="openModalByChar('${sim.data.c}')">
                         <span class="similar-char">${sim.data.c}</span>
@@ -208,6 +207,16 @@ function openModal(item) {
     `;
 
     modal.style.display = "block";
+}
+
+// ★追加機能：タグをクリックして検索する
+function searchByTag(tag) {
+    // モーダルを閉じる
+    closeModal();
+    // 検索窓にタグの文字を入れる
+    document.getElementById('kanjiInput').value = tag;
+    // 検索実行
+    searchKanji();
 }
 
 // 漢字文字からモーダルを開くヘルパー関数
