@@ -3,13 +3,16 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq2lxuW
 // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
 let appData = []; // 語群データ
+let txtWordList = []; // 日本語一般語.txtのデータ
 
 window.onload = function() {
-    loadData(); 
+    loadData(); // 語群データ読み込み
+    loadTxtData(); // テキストファイル読み込み
+    
     if (typeof KANJI_DATA !== 'undefined') {
         searchKanji();
     }
-    initGojuuonTable(); // 五十音表初期化
+    initGojuuonTable();
 };
 
 // タブ切り替え
@@ -30,6 +33,7 @@ function hiraToKata(str) {
     });
 }
 function normalizeString(str) {
+    // 濁点・半濁点除去、小文字→大文字
     let res = str.normalize('NFD').replace(/[\u3099\u309A]/g, "");
     const smallToLarge = {
         'っ':'つ', 'ゃ':'や', 'ゅ':'ゆ', 'ょ':'よ', 'ぁ':'あ', 'ぃ':'い', 'ぅ':'う', 'ぇ':'え', 'ぉ':'お'
@@ -40,6 +44,7 @@ function normalizeString(str) {
 // ------------------------------------
 // 五十音表検索機能
 // ------------------------------------
+// 横向きレイアウト
 const GOJUON_LAYOUT = [
     ['あ','い','う','え','お'],
     ['か','き','く','け','こ'],
@@ -51,10 +56,26 @@ const GOJUON_LAYOUT = [
     ['や','','ゆ','','よ'],
     ['ら','り','る','れ','ろ'],
     ['わ','','を','','ん'],
-    ['','','','',''] // 予備行
+    ['','','','','']
 ];
 
-let selectedCells = []; // 選択されたセルのリスト [{char, r, c}, ...]
+let selectedCells = []; 
+
+// テキストファイルを読み込む
+async function loadTxtData() {
+    const statusEl = document.getElementById('txtStatus');
+    try {
+        const response = await fetch('日本語一般語.txt');
+        if (!response.ok) throw new Error("File not found");
+        const text = await response.text();
+        // 改行で区切って配列化 & 空行削除
+        txtWordList = text.split(/\r\n|\n/).map(w => w.trim()).filter(w => w);
+        statusEl.innerText = `辞書読み込み完了: ${txtWordList.length}語`;
+    } catch (err) {
+        console.error(err);
+        statusEl.innerText = "「日本語一般語.txt」が見つかりません。同じフォルダに置いてください。";
+    }
+}
 
 function initGojuuonTable() {
     const grid = document.getElementById('gojuonGrid');
@@ -77,19 +98,18 @@ function initGojuuonTable() {
         });
     });
     
-    // キャンバスのサイズ調整
-    const canvas = document.getElementById('lineCanvas');
-    canvas.width = grid.offsetWidth;
-    canvas.height = grid.offsetHeight;
+    setTimeout(() => {
+        const canvas = document.getElementById('lineCanvas');
+        canvas.width = grid.offsetWidth;
+        canvas.height = grid.offsetHeight;
+    }, 100);
 }
 
 function onCellClick(div, r, c, char) {
-    // 既に選択済みなら選択解除（末尾の場合のみ）
     if (selectedCells.length > 0 && selectedCells[selectedCells.length-1].char === char) {
         selectedCells.pop();
         div.classList.remove('selected');
     } else {
-        // 新規選択
         selectedCells.push({char: char, r: r, c: c});
         div.classList.add('selected');
     }
@@ -105,7 +125,6 @@ function resetGojuon() {
     updateDisplay();
     drawLines();
     document.getElementById('gojuonResultArea').innerHTML = "";
-    document.getElementById('gojuonCount').innerText = "結果: 0件";
 }
 
 function updateDisplay() {
@@ -121,10 +140,6 @@ function drawLines() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (selectedCells.length < 2) return;
 
-    // セルのサイズを取得（動的計算）
-    // 50px + gap 5px なので、中心は約25px, 80px...
-    // 汎用的にDOM要素から中心を計算する
-    
     ctx.beginPath();
     ctx.strokeStyle = "rgba(231, 76, 60, 0.7)";
     ctx.lineWidth = 5;
@@ -132,7 +147,6 @@ function drawLines() {
     ctx.lineJoin = "round";
 
     selectedCells.forEach((cell, index) => {
-        // 対応するDOM要素を探す
         const targetDiv = grid.querySelector(`div[data-r="${cell.r}"][data-c="${cell.c}"]`);
         if (targetDiv) {
             const rect = targetDiv.getBoundingClientRect();
@@ -140,11 +154,8 @@ function drawLines() {
             const x = rect.left - gridRect.left + rect.width / 2;
             const y = rect.top - gridRect.top + rect.height / 2;
 
-            if (index === 0) {
-                ctx.moveTo(x, y);
-            } else {
-                ctx.lineTo(x, y);
-            }
+            if (index === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
         }
     });
     ctx.stroke();
@@ -153,13 +164,9 @@ function drawLines() {
 // 形状検索ロジック
 function searchByShape() {
     const resultArea = document.getElementById('gojuonResultArea');
-    const countEl = document.getElementById('gojuonCount');
     resultArea.innerHTML = "";
     
-    if (selectedCells.length < 2) {
-        countEl.innerText = "2文字以上選択してください";
-        return;
-    }
+    if (selectedCells.length < 2) return;
 
     // 1. 入力のベクトル列を作成
     const inputVectors = [];
@@ -170,85 +177,59 @@ function searchByShape() {
         });
     }
 
-    let foundGroups = [];
+    const matchedWords = [];
 
-    // 2. 全単語に対して形状マッチング
-    appData.forEach(group => {
-        // wordsが配列か確認
-        const words = Array.isArray(group.words) ? group.words : [];
-        const matchedWords = [];
+    // 2. テキストファイルから読み込んだ単語リストに対して検索
+    txtWordList.forEach(word => {
+        if (word.length !== selectedCells.length) return;
 
-        words.forEach(word => {
-            // 文字数が一致しないと形も合わない
-            // (ただし、濁点・半濁点を無視するなら文字数は一致するはず)
-            // 入力された文字数と同じ長さの単語のみ対象
-            if (word.length !== selectedCells.length) return;
-
-            // 単語の各文字の座標を取得
-            const coords = [];
-            let isValid = true;
-            for (let char of word) {
-                // 正規化（濁点とる、小文字大文字）して座標を探す
-                const normalized = normalizeString(char); // 既存関数利用
-                const coord = getCoord(normalized);
-                if (!coord) {
-                    isValid = false;
-                    break;
-                }
-                coords.push(coord);
+        const coords = [];
+        let isValid = true;
+        for (let char of word) {
+            const normalized = normalizeString(char);
+            const coord = getCoord(normalized);
+            if (!coord) {
+                isValid = false;
+                break;
             }
+            coords.push(coord);
+        }
 
-            if (!isValid) return;
+        if (!isValid) return;
 
-            // 単語のベクトルを計算して比較
-            let isShapeMatch = true;
-            for(let i=0; i<inputVectors.length; i++) {
-                const wordDr = coords[i+1].r - coords[i].r;
-                const wordDc = coords[i+1].c - coords[i].c;
-                if (wordDr !== inputVectors[i].dr || wordDc !== inputVectors[i].dc) {
-                    isShapeMatch = false;
-                    break;
-                }
+        let isShapeMatch = true;
+        for(let i=0; i<inputVectors.length; i++) {
+            const wordDr = coords[i+1].r - coords[i].r;
+            const wordDc = coords[i+1].c - coords[i].c;
+            if (wordDr !== inputVectors[i].dr || wordDc !== inputVectors[i].dc) {
+                isShapeMatch = false;
+                break;
             }
+        }
 
-            if (isShapeMatch) {
-                matchedWords.push(word);
-            }
-        });
-
-        if (matchedWords.length > 0) {
-            foundGroups.push({
-                groupName: group.groupName,
-                words: matchedWords
-            });
+        if (isShapeMatch) {
+            matchedWords.push(word);
         }
     });
-
-    // 3. 結果表示
-    countEl.innerText = `結果: ${foundGroups.length}件`;
     
-    if (foundGroups.length === 0) {
-        resultArea.innerHTML = `<div class="no-result">同じ形の単語は見つかりませんでした</div>`;
+    // 自分自身（入力した単語）は除外してもいいが、確認用に含める
+    if (matchedWords.length === 0) {
+        resultArea.innerHTML = `<div class="no-result">見つかりませんでした</div>`;
         return;
     }
 
-    foundGroups.forEach(group => {
-        const card = document.createElement('div');
-        card.className = 'group-card match-perfect';
-        const wordsHtml = group.words.map(w => `<span class="word-item">${w}</span>`).join("");
-        card.innerHTML = `
-            <span class="group-name">${group.groupName}</span>
-            <div class="word-list">${wordsHtml}</div>
-        `;
-        resultArea.appendChild(card);
-    });
+    // 結果表示
+    const card = document.createElement('div');
+    card.className = 'group-card match-perfect';
+    const wordsHtml = matchedWords.map(w => `<span class="word-item">${w}</span>`).join("");
+    card.innerHTML = `
+        <span class="group-name">同じ形の単語 (${matchedWords.length}件)</span>
+        <div class="word-list">${wordsHtml}</div>
+    `;
+    resultArea.appendChild(card);
 }
 
-// 文字から座標(r, c)を返すヘルパー
 function getCoord(char) {
-    // ひらがな・カタカナ同一視などはここで行うと良い
-    // 今回は normalizeString で濁点除去済み前提
-    // 表の中から探す
     for(let r=0; r<GOJUON_LAYOUT.length; r++) {
         for(let c=0; c<GOJUON_LAYOUT[r].length; c++) {
             if (GOJUON_LAYOUT[r][c] === char) {
@@ -264,7 +245,7 @@ function getCoord(char) {
 // ------------------------------------
 function searchKanji() {
     const rawInput = document.getElementById('kanjiInput').value.trim();
-    // 漢字検索は入力をそのまま使う（カタカナ変換しない）
+    // 入力値をそのまま検索に使用
     const searchInput = rawInput;
 
     const sortOption = document.getElementById('sortOption').value;
@@ -337,24 +318,29 @@ function openModal(item) {
     if (!modal) return;
     const body = document.getElementById('modalBody');
     const strokeDisplay = item.s > 0 ? item.s + '画' : '画数不明';
-    
-    // タグをクリックすると検索を実行
+
     const makeTags = (list, className) => {
         if (!list || list.length === 0) return '<span style="color:#ccc; font-size:12px;">なし</span>';
         return list.map(word => `<span class="${className} clickable-tag" onclick="searchByTag('${word}')">${word}</span>`).join('');
     };
 
-    // 類似漢字
+    // 類似漢字検索ロジック
     let similarHtml = '';
-    if (item.k && item.k.length > 0) {
-        const myKeywords = item.k;
+    let allMyKeywords = [...(item.k || [])];
+    if(item.k2) allMyKeywords = allMyKeywords.concat(item.k2);
+    if(item.k3) allMyKeywords = allMyKeywords.concat(item.k3);
+
+    if (allMyKeywords.length >= 1) { 
         const similarItems = KANJI_DATA.map(otherItem => {
             if (otherItem.c === item.c) return null;
-            if (!otherItem.k || otherItem.k.length === 0) return null;
-            
-            const commonKeywords = otherItem.k.filter(k => myKeywords.includes(k));
+            let otherKeywords = [...(otherItem.k || [])];
+            if(otherItem.k2) otherKeywords = otherKeywords.concat(otherItem.k2);
+            if(otherItem.k3) otherKeywords = otherKeywords.concat(otherItem.k3);
+            if (otherKeywords.length === 0) return null;
+
+            const commonKeywords = otherKeywords.filter(k => allMyKeywords.includes(k));
             const commonCount = commonKeywords.length;
-            const totalKeywords = otherItem.k.length;
+            const totalKeywords = otherKeywords.length;
 
             if (commonCount >= 2) {
                 const ratio = commonCount / totalKeywords;
@@ -414,7 +400,7 @@ window.onclick = function(event) {
 }
 
 // ------------------------------------
-// 語群検索機能
+// 語群検索機能（GAS連動）
 // ------------------------------------
 async function loadData() {
     const countEl = document.getElementById('resultCount');
@@ -424,7 +410,6 @@ async function loadData() {
         const response = await fetch(GAS_URL);
         if (!response.ok) throw new Error("Network response was not ok");
         appData = await response.json();
-        
         if (countEl) countEl.innerText = `読み込み完了（全${appData.length}件）。文字を入力してください。`;
         searchWords(); 
     } catch (error) {
@@ -481,7 +466,6 @@ function searchWords() {
         const missingChars = inputChars.filter(originalChar => {
             let targetChar = originalChar.toLowerCase();
             let targetTextToSearch = combinedText.toLowerCase();
-
             if (looseMode) {
                 targetChar = normalizeString(targetChar);
                 targetTextToSearch = normalizeString(targetTextToSearch);
