@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>謎解き検索システム</title>
-    <!-- デザインの読み込み -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -12,14 +11,13 @@
 <div class="container">
     <h1>検索システム</h1>
     
-    <!-- タブボタン -->
     <div class="tab-buttons">
         <button class="tab-btn active" onclick="switchTab('word')">語群検索</button>
         <button class="tab-btn" onclick="switchTab('kanji')">漢字検索</button>
         <button class="tab-btn" onclick="switchTab('gojuon')">五十音表</button>
     </div>
 
-    <!-- ▼▼▼ 語群検索タブ (GAS連動) ▼▼▼ -->
+    <!-- 語群検索タブ -->
     <div id="tab-word" class="tab-content active">
         <p class="description">スプレッドシート連動版</p>
         <div class="search-box">
@@ -35,7 +33,7 @@
         <div id="resultArea" class="result-area"></div>
     </div>
 
-    <!-- ▼▼▼ 漢字検索タブ (内部データ) ▼▼▼ -->
+    <!-- 漢字検索タブ -->
     <div id="tab-kanji" class="tab-content">
         <p class="description">小学校で習う漢字（1026字）の検索</p>
         <div class="search-box">
@@ -60,29 +58,27 @@
         <div id="kanjiResultArea" class="result-area kanji-grid"></div>
     </div>
 
-    <!-- ▼▼▼ 五十音表検索タブ (新規追加) ▼▼▼ -->
+    <!-- ▼▼▼ 五十音表検索タブ (新規) ▼▼▼ -->
     <div id="tab-gojuon" class="tab-content">
-        <p class="description">選択したマスの「形」と同じ動きをする単語を探します</p>
+        <p class="description">選択したマスの「形」と同じ動きをする単語を探します<br><small>※「日本語一般語.txt」から検索</small></p>
         
         <div class="gojuon-controls">
             <button class="btn-reset" onclick="resetGojuon()">リセット</button>
             <div id="gojuonSelectDisplay">選択: なし</div>
         </div>
 
-        <div class="gojuon-container">
-            <!-- 線を描画するキャンバス -->
+        <div class="gojuon-wrapper">
             <canvas id="lineCanvas"></canvas>
-            <!-- 五十音グリッド -->
             <div id="gojuonGrid" class="gojuon-grid"></div>
         </div>
 
-        <div id="gojuonCount" class="result-count">結果: 0件</div>
+        <div id="txtStatus" class="result-count">テキストファイル読み込み中...</div>
         <div id="gojuonResultArea" class="result-area"></div>
     </div>
 
 </div>
 
-<!-- ▼▼▼ 詳細表示モーダル ▼▼▼ -->
+<!-- 詳細表示モーダル -->
 <div id="detailModal" class="modal">
     <div class="modal-content">
         <span class="close-btn" onclick="closeModal()">&times;</span>
@@ -90,9 +86,7 @@
     </div>
 </div>
 
-<!-- データの読み込み -->
 <script src="kanji_data.js"></script>
-<!-- 機能の読み込み -->
 <script src="script.js"></script>
 
 </body>
