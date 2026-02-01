@@ -3,11 +3,12 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq2lxuW
 // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
 let appData = []; // 語群データ
-let txtWordList = []; // 日本語一般語.txtのデータ
+let dictStandard = []; // 日本語一般語.txt
+let dictPig = [];      // 豚辞書.txt
 
 window.onload = function() {
     loadData(); // 語群データ読み込み
-    loadTxtData(); // テキストファイル読み込み
+    loadAllDictionaries(); // 辞書ファイル読み込み
     
     if (typeof KANJI_DATA !== 'undefined') {
         searchKanji();
@@ -43,7 +44,6 @@ function normalizeString(str) {
 // ------------------------------------
 // 五十音表検索機能
 // ------------------------------------
-// レイアウト定義 (11列 x 5行)
 const GOJUON_LAYOUT = [
     ['ん','わ','ら','や','ま','は','な','た','さ','か','あ'],
     ['','','り','','み','ひ','に','ち','し','き','い'],
@@ -54,19 +54,39 @@ const GOJUON_LAYOUT = [
 
 let selectedCells = []; 
 
-// テキストファイルを読み込む
-async function loadTxtData() {
+// 辞書ファイルを読み込む
+async function loadAllDictionaries() {
     const statusEl = document.getElementById('txtStatus');
-    try {
-        const response = await fetch('日本語一般語.txt');
-        if (!response.ok) throw new Error("File not found");
-        const text = await response.text();
-        txtWordList = text.split(/\r\n|\n/).map(w => w.trim()).filter(w => w);
-        statusEl.innerText = `辞書読み込み完了: ${txtWordList.length}語`;
-    } catch (err) {
-        console.error(err);
-        statusEl.innerText = "「日本語一般語.txt」が見つかりません。同じフォルダに置いてください。";
-    }
+    statusEl.innerText = "辞書読み込み中...";
+    
+    const loadFile = async (filename) => {
+        try {
+            const res = await fetch(filename);
+            if (!res.ok) return [];
+            const text = await res.text();
+            return text.split(/\r\n|\n/).map(w => w.trim()).filter(w => w);
+        } catch (e) {
+            return [];
+        }
+    };
+
+    // 並行して読み込み
+    const [std, pig] = await Promise.all([
+        loadFile('日本語一般語.txt'),
+        loadFile('豚辞書.txt')
+    ]);
+
+    dictStandard = std;
+    dictPig = pig;
+
+    let msg = "";
+    if (dictStandard.length > 0) msg += `一般語:${dictStandard.length}語 `;
+    else msg += `一般語:読込失敗 `;
+    
+    if (dictPig.length > 0) msg += `豚辞書:${dictPig.length}語 `;
+    else msg += `豚辞書:読込失敗 `;
+
+    statusEl.innerText = msg;
 }
 
 function initGojuuonTable() {
@@ -158,10 +178,25 @@ function searchByShape() {
     const resultArea = document.getElementById('gojuonResultArea');
     const allowRotation = document.getElementById('allowRotation').checked;
     const allowReflection = document.getElementById('allowReflection').checked;
-    
+    const useStd = document.getElementById('useDictStandard').checked;
+    const usePig = document.getElementById('useDictPig').checked;
+
     resultArea.innerHTML = "";
     
     if (selectedCells.length < 2) return;
+
+    // 検索対象の単語リストを作成
+    let targetWords = [];
+    if (useStd) targetWords = targetWords.concat(dictStandard);
+    if (usePig) targetWords = targetWords.concat(dictPig);
+    
+    // 重複除去（Setを使う）
+    targetWords = [...new Set(targetWords)];
+
+    if (targetWords.length === 0) {
+        document.getElementById('gojuonCount').innerText = "辞書が選択されていません、または空です";
+        return;
+    }
 
     // 1. 入力のベクトル列を作成
     const inputVectors = [];
@@ -174,8 +209,8 @@ function searchByShape() {
 
     const matchedWords = [];
 
-    // 2. テキストファイルから読み込んだ単語リストに対して検索
-    txtWordList.forEach(word => {
+    // 2. マッチング
+    targetWords.forEach(word => {
         if (word.length !== selectedCells.length) return;
 
         const coords = [];
@@ -192,7 +227,6 @@ function searchByShape() {
 
         if (!isValid) return;
 
-        // 単語のベクトル列
         const wordVectors = [];
         for(let i=0; i<coords.length-1; i++) {
             wordVectors.push({
@@ -200,8 +234,6 @@ function searchByShape() {
                 dc: coords[i+1].c - coords[i].c
             });
         }
-
-        let isMatch = false;
 
         // ベクトル比較関数
         const check = (vecs1, vecs2) => {
@@ -212,16 +244,8 @@ function searchByShape() {
             return true;
         };
 
-        // --- 回転・反転パターンの生成 ---
-        // 基本: [dr, dc]
-        // 90度: [dc, -dr]
-        // 180度: [-dr, -dc]
-        // 270度: [-dc, dr]
-        // 反転(左右): [dr, -dc]
-        
         let patterns = [inputVectors]; // 0度
 
-        // 回転あり
         if (allowRotation) {
             const rot90 = inputVectors.map(v => ({ dr: v.dc, dc: -v.dr }));
             const rot180 = inputVectors.map(v => ({ dr: -v.dr, dc: -v.dc }));
@@ -229,17 +253,15 @@ function searchByShape() {
             patterns.push(rot90, rot180, rot270);
         }
 
-        // 反転あり（現在のパターン全てに対して反転を作る）
         if (allowReflection) {
             const currentPatterns = [...patterns];
             currentPatterns.forEach(pat => {
-                // 左右反転: dcを反転
                 const reflected = pat.map(v => ({ dr: v.dr, dc: -v.dc }));
                 patterns.push(reflected);
             });
         }
 
-        // マッチング確認
+        let isMatch = false;
         for(let pat of patterns) {
             if (check(pat, wordVectors)) {
                 isMatch = true;
@@ -252,6 +274,7 @@ function searchByShape() {
         }
     });
     
+    // 結果表示
     if (matchedWords.length === 0) {
         resultArea.innerHTML = `<div class="no-result">見つかりませんでした</div>`;
         return;
@@ -283,7 +306,7 @@ function getCoord(char) {
 // ------------------------------------
 function searchKanji() {
     const rawInput = document.getElementById('kanjiInput').value.trim();
-    // 漢字検索は入力をそのまま使う（カタカナ変換しない）
+    // 漢字検索: 入力をそのまま使用（内部変換なし）
     const searchInput = rawInput;
 
     const sortOption = document.getElementById('sortOption').value;
@@ -357,13 +380,11 @@ function openModal(item) {
     const body = document.getElementById('modalBody');
     const strokeDisplay = item.s > 0 ? item.s + '画' : '画数不明';
     
-    // タグをクリックすると検索を実行
     const makeTags = (list, className) => {
         if (!list || list.length === 0) return '<span style="color:#ccc; font-size:12px;">なし</span>';
         return list.map(word => `<span class="${className} clickable-tag" onclick="searchByTag('${word}')">${word}</span>`).join('');
     };
 
-    // 類似漢字
     let similarHtml = '';
     if (item.k && item.k.length > 0) {
         const myKeywords = item.k;
