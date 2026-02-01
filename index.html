@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>語群＆漢字検索システム</title>
+    <title>謎解き検索システム</title>
     <!-- デザインの読み込み -->
     <link rel="stylesheet" href="style.css">
 </head>
@@ -16,9 +16,10 @@
     <div class="tab-buttons">
         <button class="tab-btn active" onclick="switchTab('word')">語群検索</button>
         <button class="tab-btn" onclick="switchTab('kanji')">漢字検索</button>
+        <button class="tab-btn" onclick="switchTab('gojuon')">五十音表</button>
     </div>
 
-    <!-- ▼▼▼ 語群検索タブ ▼▼▼ -->
+    <!-- ▼▼▼ 語群検索タブ (GAS連動) ▼▼▼ -->
     <div id="tab-word" class="tab-content active">
         <p class="description">スプレッドシート連動版</p>
         <div class="search-box">
@@ -34,19 +35,17 @@
         <div id="resultArea" class="result-area"></div>
     </div>
 
-    <!-- ▼▼▼ 漢字検索タブ ▼▼▼ -->
+    <!-- ▼▼▼ 漢字検索タブ (内部データ) ▼▼▼ -->
     <div id="tab-kanji" class="tab-content">
         <p class="description">小学校で習う漢字（1026字）の検索</p>
         <div class="search-box">
-            <input type="text" id="kanjiInput" placeholder="パーツとなるカタカナや漢字を入力" oninput="searchKanji()">
-            
+            <input type="text" id="kanjiInput" placeholder="部首や漢字を入力（例：言、心）" oninput="searchKanji()">
             <div class="options">
                 <label class="checkbox-label">
                     <input type="checkbox" id="useExtendedSearch" onchange="searchKanji()">
                     拡張キーワードも含める
                 </label>
             </div>
-
             <div class="sort-options">
                 <span>並び替え:</span>
                 <select id="sortOption" onchange="searchKanji()">
@@ -56,15 +55,34 @@
                     <option value="stroke_desc">画数順 (多→少)</option>
                 </select>
             </div>
-
             <div id="kanjiCount" class="result-count">全1026字から検索</div>
         </div>
         <div id="kanjiResultArea" class="result-area kanji-grid"></div>
     </div>
 
+    <!-- ▼▼▼ 五十音表検索タブ (新規追加) ▼▼▼ -->
+    <div id="tab-gojuon" class="tab-content">
+        <p class="description">選択したマスの「形」と同じ動きをする単語を探します</p>
+        
+        <div class="gojuon-controls">
+            <button class="btn-reset" onclick="resetGojuon()">リセット</button>
+            <div id="gojuonSelectDisplay">選択: なし</div>
+        </div>
+
+        <div class="gojuon-container">
+            <!-- 線を描画するキャンバス -->
+            <canvas id="lineCanvas"></canvas>
+            <!-- 五十音グリッド -->
+            <div id="gojuonGrid" class="gojuon-grid"></div>
+        </div>
+
+        <div id="gojuonCount" class="result-count">結果: 0件</div>
+        <div id="gojuonResultArea" class="result-area"></div>
+    </div>
+
 </div>
 
-<!-- ▼▼▼ 詳細表示モーダル（ここを追加） ▼▼▼ -->
+<!-- ▼▼▼ 詳細表示モーダル ▼▼▼ -->
 <div id="detailModal" class="modal">
     <div class="modal-content">
         <span class="close-btn" onclick="closeModal()">&times;</span>
