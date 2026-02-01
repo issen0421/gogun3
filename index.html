@@ -62,7 +62,7 @@
     <div id="tab-gojuon" class="tab-content">
         <p class="description">
             選択したマスの「形」と同じ動きをする単語を探します<br>
-            <small>※「日本語一般語.txt」を読み込んで検索します</small>
+            <small>※「日本語一般語.txt」から検索</small>
         </p>
         
         <div class="gojuon-controls">
@@ -70,7 +70,11 @@
             <div class="gojuon-options">
                 <label class="checkbox-label">
                     <input type="checkbox" id="allowRotation" onchange="searchByShape()">
-                    回転してもOK (90°,180°,270°)
+                    回転OK (90°単位)
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="allowReflection" onchange="searchByShape()">
+                    反転OK (鏡写し)
                 </label>
             </div>
             <div id="gojuonSelectDisplay">選択: なし</div>
