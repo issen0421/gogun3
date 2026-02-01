@@ -92,6 +92,7 @@ input[type="text"]:focus { border-color: #3498db; }
     font-size: 14px;
     color: #555;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 .checkbox-label {
@@ -230,7 +231,7 @@ select {
 }
 .gojuon-grid {
     display: grid;
-    /* 横向き(あ行〜ん): 11列 */
+    /* 横向き: 11列 x 5行 (ん〜あ) */
     grid-template-columns: repeat(11, 40px);
     grid-template-rows: repeat(5, 40px);
     gap: 4px;
