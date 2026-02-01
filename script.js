@@ -33,7 +33,6 @@ function hiraToKata(str) {
     });
 }
 function normalizeString(str) {
-    // 濁点・半濁点除去、小文字→大文字
     let res = str.normalize('NFD').replace(/[\u3099\u309A]/g, "");
     const smallToLarge = {
         'っ':'つ', 'ゃ':'や', 'ゅ':'ゆ', 'ょ':'よ', 'ぁ':'あ', 'ぃ':'い', 'ぅ':'う', 'ぇ':'え', 'ぉ':'お'
@@ -44,19 +43,13 @@ function normalizeString(str) {
 // ------------------------------------
 // 五十音表検索機能
 // ------------------------------------
-// 横向きレイアウト
+// レイアウト定義 (11列 x 5行)
 const GOJUON_LAYOUT = [
-    ['あ','い','う','え','お'],
-    ['か','き','く','け','こ'],
-    ['さ','し','す','せ','そ'],
-    ['た','ち','つ','て','と'],
-    ['な','に','ぬ','ね','の'],
-    ['は','ひ','ふ','へ','ほ'],
-    ['ま','み','む','め','も'],
-    ['や','','ゆ','','よ'],
-    ['ら','り','る','れ','ろ'],
-    ['わ','','を','','ん'],
-    ['','','','','']
+    ['ん','わ','ら','や','ま','は','な','た','さ','か','あ'],
+    ['','','り','','み','ひ','に','ち','し','き','い'],
+    ['','','る','ゆ','む','ふ','ぬ','つ','す','く','う'],
+    ['','','れ','','め','へ','ね','て','せ','け','え'],
+    ['','を','ろ','よ','も','ほ','の','と','そ','こ','お']
 ];
 
 let selectedCells = []; 
@@ -65,10 +58,10 @@ let selectedCells = [];
 async function loadTxtData() {
     const statusEl = document.getElementById('txtStatus');
     try {
+        // 同じフォルダにある「日本語一般語.txt」を読み込む
         const response = await fetch('日本語一般語.txt');
         if (!response.ok) throw new Error("File not found");
         const text = await response.text();
-        // 改行で区切って配列化 & 空行削除
         txtWordList = text.split(/\r\n|\n/).map(w => w.trim()).filter(w => w);
         statusEl.innerText = `辞書読み込み完了: ${txtWordList.length}語`;
     } catch (err) {
@@ -87,6 +80,7 @@ function initGojuuonTable() {
             const div = document.createElement('div');
             div.className = char ? 'cell' : 'cell empty';
             div.innerText = char;
+            // 座標データを持たせる
             div.dataset.r = rIndex;
             div.dataset.c = cIndex;
             div.dataset.char = char;
@@ -107,9 +101,11 @@ function initGojuuonTable() {
 
 function onCellClick(div, r, c, char) {
     if (selectedCells.length > 0 && selectedCells[selectedCells.length-1].char === char) {
+        // 末尾と同じなら削除（直前の選択キャンセル）
         selectedCells.pop();
         div.classList.remove('selected');
     } else {
+        // 新規選択
         selectedCells.push({char: char, r: r, c: c});
         div.classList.add('selected');
     }
@@ -142,11 +138,12 @@ function drawLines() {
 
     ctx.beginPath();
     ctx.strokeStyle = "rgba(231, 76, 60, 0.7)";
-    ctx.lineWidth = 5;
+    ctx.lineWidth = 4;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
 
     selectedCells.forEach((cell, index) => {
+        // 座標から対応するDOM要素を探して位置を取得
         const targetDiv = grid.querySelector(`div[data-r="${cell.r}"][data-c="${cell.c}"]`);
         if (targetDiv) {
             const rect = targetDiv.getBoundingClientRect();
@@ -164,11 +161,13 @@ function drawLines() {
 // 形状検索ロジック
 function searchByShape() {
     const resultArea = document.getElementById('gojuonResultArea');
+    const allowRotation = document.getElementById('allowRotation').checked;
+    
     resultArea.innerHTML = "";
     
     if (selectedCells.length < 2) return;
 
-    // 1. 入力のベクトル列を作成
+    // 1. 入力のベクトル列を作成 (dr, dc)
     const inputVectors = [];
     for(let i=0; i<selectedCells.length-1; i++) {
         inputVectors.push({
@@ -181,11 +180,14 @@ function searchByShape() {
 
     // 2. テキストファイルから読み込んだ単語リストに対して検索
     txtWordList.forEach(word => {
+        // 文字数が一致しないと形も合わない
         if (word.length !== selectedCells.length) return;
 
+        // 単語の各文字の座標を取得
         const coords = [];
         let isValid = true;
         for (let char of word) {
+            // 濁点などを取って座標を探す
             const normalized = normalizeString(char);
             const coord = getCoord(normalized);
             if (!coord) {
@@ -194,31 +196,55 @@ function searchByShape() {
             }
             coords.push(coord);
         }
-
         if (!isValid) return;
 
-        let isShapeMatch = true;
-        for(let i=0; i<inputVectors.length; i++) {
-            const wordDr = coords[i+1].r - coords[i].r;
-            const wordDc = coords[i+1].c - coords[i].c;
-            if (wordDr !== inputVectors[i].dr || wordDc !== inputVectors[i].dc) {
-                isShapeMatch = false;
-                break;
+        // 単語のベクトル列を計算
+        const wordVectors = [];
+        for(let i=0; i<coords.length-1; i++) {
+            wordVectors.push({
+                dr: coords[i+1].r - coords[i].r,
+                dc: coords[i+1].c - coords[i].c
+            });
+        }
+
+        // 比較（0度, 90度, 180度, 270度）
+        let isMatch = false;
+
+        // 0度 (そのまま)
+        if (compareVectors(inputVectors, wordVectors)) isMatch = true;
+
+        if (!isMatch && allowRotation) {
+            // 90度回転 (dr, dc) -> (dc, -dr) ※行は下プラス、列は右プラスの座標系
+            // 行列回転の考え方: (x, y) -> (y, -x) 
+            // r(行)がy, c(列)がx。
+            // (dr, dc) -> (dc, -dr)
+            let rotated90 = inputVectors.map(v => ({ dr: v.dc, dc: -v.dr }));
+            if (compareVectors(rotated90, wordVectors)) isMatch = true;
+
+            // 180度 (-dr, -dc)
+            if (!isMatch) {
+                let rotated180 = inputVectors.map(v => ({ dr: -v.dr, dc: -v.dc }));
+                if (compareVectors(rotated180, wordVectors)) isMatch = true;
+            }
+
+            // 270度 (-dc, dr)
+            if (!isMatch) {
+                let rotated270 = inputVectors.map(v => ({ dr: -v.dc, dc: v.dr }));
+                if (compareVectors(rotated270, wordVectors)) isMatch = true;
             }
         }
 
-        if (isShapeMatch) {
+        if (isMatch) {
             matchedWords.push(word);
         }
     });
     
-    // 自分自身（入力した単語）は除外してもいいが、確認用に含める
+    // 結果表示
     if (matchedWords.length === 0) {
         resultArea.innerHTML = `<div class="no-result">見つかりませんでした</div>`;
         return;
     }
 
-    // 結果表示
     const card = document.createElement('div');
     card.className = 'group-card match-perfect';
     const wordsHtml = matchedWords.map(w => `<span class="word-item">${w}</span>`).join("");
@@ -229,6 +255,18 @@ function searchByShape() {
     resultArea.appendChild(card);
 }
 
+// ベクトル配列の比較
+function compareVectors(vecs1, vecs2) {
+    if (vecs1.length !== vecs2.length) return false;
+    for(let i=0; i<vecs1.length; i++) {
+        if (vecs1[i].dr !== vecs2[i].dr || vecs1[i].dc !== vecs2[i].dc) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// 文字から座標(r, c)を返すヘルパー
 function getCoord(char) {
     for(let r=0; r<GOJUON_LAYOUT.length; r++) {
         for(let c=0; c<GOJUON_LAYOUT[r].length; c++) {
@@ -245,7 +283,7 @@ function getCoord(char) {
 // ------------------------------------
 function searchKanji() {
     const rawInput = document.getElementById('kanjiInput').value.trim();
-    // 入力値をそのまま検索に使用
+    // 漢字検索は入力をそのまま使う（カタカナ変換しない）
     const searchInput = rawInput;
 
     const sortOption = document.getElementById('sortOption').value;
@@ -318,29 +356,24 @@ function openModal(item) {
     if (!modal) return;
     const body = document.getElementById('modalBody');
     const strokeDisplay = item.s > 0 ? item.s + '画' : '画数不明';
-
+    
+    // タグをクリックすると検索を実行
     const makeTags = (list, className) => {
         if (!list || list.length === 0) return '<span style="color:#ccc; font-size:12px;">なし</span>';
         return list.map(word => `<span class="${className} clickable-tag" onclick="searchByTag('${word}')">${word}</span>`).join('');
     };
 
-    // 類似漢字検索ロジック
+    // 類似漢字
     let similarHtml = '';
-    let allMyKeywords = [...(item.k || [])];
-    if(item.k2) allMyKeywords = allMyKeywords.concat(item.k2);
-    if(item.k3) allMyKeywords = allMyKeywords.concat(item.k3);
-
-    if (allMyKeywords.length >= 1) { 
+    if (item.k && item.k.length > 0) {
+        const myKeywords = item.k;
         const similarItems = KANJI_DATA.map(otherItem => {
             if (otherItem.c === item.c) return null;
-            let otherKeywords = [...(otherItem.k || [])];
-            if(otherItem.k2) otherKeywords = otherKeywords.concat(otherItem.k2);
-            if(otherItem.k3) otherKeywords = otherKeywords.concat(otherItem.k3);
-            if (otherKeywords.length === 0) return null;
-
-            const commonKeywords = otherKeywords.filter(k => allMyKeywords.includes(k));
+            if (!otherItem.k || otherItem.k.length === 0) return null;
+            
+            const commonKeywords = otherItem.k.filter(k => myKeywords.includes(k));
             const commonCount = commonKeywords.length;
-            const totalKeywords = otherKeywords.length;
+            const totalKeywords = otherItem.k.length;
 
             if (commonCount >= 2) {
                 const ratio = commonCount / totalKeywords;
@@ -400,7 +433,7 @@ window.onclick = function(event) {
 }
 
 // ------------------------------------
-// 語群検索機能（GAS連動）
+// 語群検索機能
 // ------------------------------------
 async function loadData() {
     const countEl = document.getElementById('resultCount');
@@ -410,6 +443,7 @@ async function loadData() {
         const response = await fetch(GAS_URL);
         if (!response.ok) throw new Error("Network response was not ok");
         appData = await response.json();
+        
         if (countEl) countEl.innerText = `読み込み完了（全${appData.length}件）。文字を入力してください。`;
         searchWords(); 
     } catch (error) {
