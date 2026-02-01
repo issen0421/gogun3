@@ -61,23 +61,39 @@
     <!-- ▼▼▼ 五十音表検索タブ ▼▼▼ -->
     <div id="tab-gojuon" class="tab-content">
         <p class="description">
-            選択したマスの「形」と同じ動きをする単語を探します<br>
-            <small>※「日本語一般語.txt」から検索</small>
+            選択したマスの「形」と同じ動きをする単語を探します
         </p>
         
         <div class="gojuon-controls">
             <button class="btn-reset" onclick="resetGojuon()">リセット</button>
+            
+            <!-- 辞書選択オプション -->
+            <div class="gojuon-options" style="border-bottom:1px dashed #ccc; padding-bottom:10px; margin-bottom:10px;">
+                <span style="font-size:12px; font-weight:bold; color:#555;">使用する辞書:</span>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="useDictStandard" checked onchange="searchByShape()">
+                    日本語一般語
+                </label>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="useDictPig" onchange="searchByShape()">
+                    豚辞書
+                </label>
+            </div>
+
+            <!-- 形状オプション -->
             <div class="gojuon-options">
+                <span style="font-size:12px; font-weight:bold; color:#555;">形状オプション:</span>
                 <label class="checkbox-label">
                     <input type="checkbox" id="allowRotation" onchange="searchByShape()">
-                    回転OK (90°単位)
+                    回転OK
                 </label>
                 <label class="checkbox-label">
                     <input type="checkbox" id="allowReflection" onchange="searchByShape()">
-                    反転OK (鏡写し)
+                    反転OK
                 </label>
             </div>
-            <div id="gojuonSelectDisplay">選択: なし</div>
+            
+            <div id="gojuonSelectDisplay" style="margin-top:10px;">選択: なし</div>
         </div>
 
         <div class="gojuon-wrapper">
@@ -85,7 +101,7 @@
             <div id="gojuonGrid" class="gojuon-grid"></div>
         </div>
 
-        <div id="txtStatus" class="result-count">テキストファイル読み込み中...</div>
+        <div id="txtStatus" class="result-count">辞書ファイルを読み込み中...</div>
         <div id="gojuonResultArea" class="result-area"></div>
     </div>
 
