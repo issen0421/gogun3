@@ -58,12 +58,21 @@
         <div id="kanjiResultArea" class="result-area kanji-grid"></div>
     </div>
 
-    <!-- ▼▼▼ 五十音表検索タブ (新規) ▼▼▼ -->
+    <!-- ▼▼▼ 五十音表検索タブ ▼▼▼ -->
     <div id="tab-gojuon" class="tab-content">
-        <p class="description">選択したマスの「形」と同じ動きをする単語を探します<br><small>※「日本語一般語.txt」から検索</small></p>
+        <p class="description">
+            選択したマスの「形」と同じ動きをする単語を探します<br>
+            <small>※「日本語一般語.txt」を読み込んで検索します</small>
+        </p>
         
         <div class="gojuon-controls">
             <button class="btn-reset" onclick="resetGojuon()">リセット</button>
+            <div class="gojuon-options">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="allowRotation" onchange="searchByShape()">
+                    回転してもOK (90°,180°,270°)
+                </label>
+            </div>
             <div id="gojuonSelectDisplay">選択: なし</div>
         </div>
 
