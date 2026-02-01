@@ -2,34 +2,270 @@
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq2lxuWtuOMpGWsc_D7MtMn0tgdVjTqE8m_7cbcguahrbkCEtd_Uw/exec"; 
 // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
-let appData = []; // 語群データ（GASから取得）
+let appData = []; // 語群データ
 
 window.onload = function() {
-    loadData(); // 語群データ読み込み開始
-    
-    // 漢字データが読み込まれているか確認して初期検索
+    loadData(); 
     if (typeof KANJI_DATA !== 'undefined') {
         searchKanji();
     }
+    initGojuuonTable(); // 五十音表初期化
 };
 
 // タブ切り替え
 function switchTab(tabName) {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelector(`.tab-btn[onclick="switchTab('${tabName}')"]`).classList.add('active');
-    
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
     document.getElementById(`tab-${tabName}`).classList.add('active');
+}
+
+// ------------------------------------
+// 共通ユーティリティ
+// ------------------------------------
+function hiraToKata(str) {
+    return str.replace(/[\u3041-\u3096]/g, function(match) {
+        var chr = match.charCodeAt(0) + 0x60;
+        return String.fromCharCode(chr);
+    });
+}
+function normalizeString(str) {
+    let res = str.normalize('NFD').replace(/[\u3099\u309A]/g, "");
+    const smallToLarge = {
+        'っ':'つ', 'ゃ':'や', 'ゅ':'ゆ', 'ょ':'よ', 'ぁ':'あ', 'ぃ':'い', 'ぅ':'う', 'ぇ':'え', 'ぉ':'お'
+    };
+    return res.split('').map(char => smallToLarge[char] || char).join('');
+}
+
+// ------------------------------------
+// 五十音表検索機能
+// ------------------------------------
+const GOJUON_LAYOUT = [
+    ['あ','い','う','え','お'],
+    ['か','き','く','け','こ'],
+    ['さ','し','す','せ','そ'],
+    ['た','ち','つ','て','と'],
+    ['な','に','ぬ','ね','の'],
+    ['は','ひ','ふ','へ','ほ'],
+    ['ま','み','む','め','も'],
+    ['や','','ゆ','','よ'],
+    ['ら','り','る','れ','ろ'],
+    ['わ','','を','','ん'],
+    ['','','','',''] // 予備行
+];
+
+let selectedCells = []; // 選択されたセルのリスト [{char, r, c}, ...]
+
+function initGojuuonTable() {
+    const grid = document.getElementById('gojuonGrid');
+    if(!grid) return;
+    
+    grid.innerHTML = "";
+    GOJUON_LAYOUT.forEach((row, rIndex) => {
+        row.forEach((char, cIndex) => {
+            const div = document.createElement('div');
+            div.className = char ? 'cell' : 'cell empty';
+            div.innerText = char;
+            div.dataset.r = rIndex;
+            div.dataset.c = cIndex;
+            div.dataset.char = char;
+            
+            if (char) {
+                div.onclick = () => onCellClick(div, rIndex, cIndex, char);
+            }
+            grid.appendChild(div);
+        });
+    });
+    
+    // キャンバスのサイズ調整
+    const canvas = document.getElementById('lineCanvas');
+    canvas.width = grid.offsetWidth;
+    canvas.height = grid.offsetHeight;
+}
+
+function onCellClick(div, r, c, char) {
+    // 既に選択済みなら選択解除（末尾の場合のみ）
+    if (selectedCells.length > 0 && selectedCells[selectedCells.length-1].char === char) {
+        selectedCells.pop();
+        div.classList.remove('selected');
+    } else {
+        // 新規選択
+        selectedCells.push({char: char, r: r, c: c});
+        div.classList.add('selected');
+    }
+    
+    updateDisplay();
+    drawLines();
+    searchByShape();
+}
+
+function resetGojuon() {
+    selectedCells = [];
+    document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
+    updateDisplay();
+    drawLines();
+    document.getElementById('gojuonResultArea').innerHTML = "";
+    document.getElementById('gojuonCount').innerText = "結果: 0件";
+}
+
+function updateDisplay() {
+    const text = selectedCells.map(s => s.char).join(' → ');
+    document.getElementById('gojuonSelectDisplay').innerText = "選択: " + (text || "なし");
+}
+
+function drawLines() {
+    const canvas = document.getElementById('lineCanvas');
+    const ctx = canvas.getContext('2d');
+    const grid = document.getElementById('gojuonGrid');
+    
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (selectedCells.length < 2) return;
+
+    // セルのサイズを取得（動的計算）
+    // 50px + gap 5px なので、中心は約25px, 80px...
+    // 汎用的にDOM要素から中心を計算する
+    
+    ctx.beginPath();
+    ctx.strokeStyle = "rgba(231, 76, 60, 0.7)";
+    ctx.lineWidth = 5;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    selectedCells.forEach((cell, index) => {
+        // 対応するDOM要素を探す
+        const targetDiv = grid.querySelector(`div[data-r="${cell.r}"][data-c="${cell.c}"]`);
+        if (targetDiv) {
+            const rect = targetDiv.getBoundingClientRect();
+            const gridRect = grid.getBoundingClientRect();
+            const x = rect.left - gridRect.left + rect.width / 2;
+            const y = rect.top - gridRect.top + rect.height / 2;
+
+            if (index === 0) {
+                ctx.moveTo(x, y);
+            } else {
+                ctx.lineTo(x, y);
+            }
+        }
+    });
+    ctx.stroke();
+}
+
+// 形状検索ロジック
+function searchByShape() {
+    const resultArea = document.getElementById('gojuonResultArea');
+    const countEl = document.getElementById('gojuonCount');
+    resultArea.innerHTML = "";
+    
+    if (selectedCells.length < 2) {
+        countEl.innerText = "2文字以上選択してください";
+        return;
+    }
+
+    // 1. 入力のベクトル列を作成
+    const inputVectors = [];
+    for(let i=0; i<selectedCells.length-1; i++) {
+        inputVectors.push({
+            dr: selectedCells[i+1].r - selectedCells[i].r,
+            dc: selectedCells[i+1].c - selectedCells[i].c
+        });
+    }
+
+    let foundGroups = [];
+
+    // 2. 全単語に対して形状マッチング
+    appData.forEach(group => {
+        // wordsが配列か確認
+        const words = Array.isArray(group.words) ? group.words : [];
+        const matchedWords = [];
+
+        words.forEach(word => {
+            // 文字数が一致しないと形も合わない
+            // (ただし、濁点・半濁点を無視するなら文字数は一致するはず)
+            // 入力された文字数と同じ長さの単語のみ対象
+            if (word.length !== selectedCells.length) return;
+
+            // 単語の各文字の座標を取得
+            const coords = [];
+            let isValid = true;
+            for (let char of word) {
+                // 正規化（濁点とる、小文字大文字）して座標を探す
+                const normalized = normalizeString(char); // 既存関数利用
+                const coord = getCoord(normalized);
+                if (!coord) {
+                    isValid = false;
+                    break;
+                }
+                coords.push(coord);
+            }
+
+            if (!isValid) return;
+
+            // 単語のベクトルを計算して比較
+            let isShapeMatch = true;
+            for(let i=0; i<inputVectors.length; i++) {
+                const wordDr = coords[i+1].r - coords[i].r;
+                const wordDc = coords[i+1].c - coords[i].c;
+                if (wordDr !== inputVectors[i].dr || wordDc !== inputVectors[i].dc) {
+                    isShapeMatch = false;
+                    break;
+                }
+            }
+
+            if (isShapeMatch) {
+                matchedWords.push(word);
+            }
+        });
+
+        if (matchedWords.length > 0) {
+            foundGroups.push({
+                groupName: group.groupName,
+                words: matchedWords
+            });
+        }
+    });
+
+    // 3. 結果表示
+    countEl.innerText = `結果: ${foundGroups.length}件`;
+    
+    if (foundGroups.length === 0) {
+        resultArea.innerHTML = `<div class="no-result">同じ形の単語は見つかりませんでした</div>`;
+        return;
+    }
+
+    foundGroups.forEach(group => {
+        const card = document.createElement('div');
+        card.className = 'group-card match-perfect';
+        const wordsHtml = group.words.map(w => `<span class="word-item">${w}</span>`).join("");
+        card.innerHTML = `
+            <span class="group-name">${group.groupName}</span>
+            <div class="word-list">${wordsHtml}</div>
+        `;
+        resultArea.appendChild(card);
+    });
+}
+
+// 文字から座標(r, c)を返すヘルパー
+function getCoord(char) {
+    // ひらがな・カタカナ同一視などはここで行うと良い
+    // 今回は normalizeString で濁点除去済み前提
+    // 表の中から探す
+    for(let r=0; r<GOJUON_LAYOUT.length; r++) {
+        for(let c=0; c<GOJUON_LAYOUT[r].length; c++) {
+            if (GOJUON_LAYOUT[r][c] === char) {
+                return {r: r, c: c};
+            }
+        }
+    }
+    return null;
 }
 
 // ------------------------------------
 // 漢字検索機能
 // ------------------------------------
 function searchKanji() {
-    // 入力値を取得
-    const rawInput = document.getElementById('kanjiInput').value;
-    // 空白を除去して検索用文字列にする（誤動作防止）
-    const searchInput = rawInput.replace(/\s+/g, '');
+    const rawInput = document.getElementById('kanjiInput').value.trim();
+    // 漢字検索は入力をそのまま使う（カタカナ変換しない）
+    const searchInput = rawInput;
 
     const sortOption = document.getElementById('sortOption').value;
     const checkbox = document.getElementById('useExtendedSearch');
@@ -40,38 +276,31 @@ function searchKanji() {
 
     resultArea.innerHTML = "";
 
-    // KANJI_DATAが読み込まれているか確認
     if (typeof KANJI_DATA === 'undefined') {
-        resultArea.innerHTML = `<div class="no-result">漢字データ読み込みエラー<br>kanji_data.jsが見つかりません</div>`;
+        resultArea.innerHTML = `<div class="no-result">漢字データ読み込みエラー</div>`;
         return;
     }
 
     let filteredData = KANJI_DATA;
 
     if (searchInput) {
-        // 1文字ずつに分解してAND検索（すべて含むか）を行う
         const inputChars = searchInput.split('');
 
         filteredData = KANJI_DATA.filter(item => {
-            // 検索対象となるキーワードリストをまとめる
             let keywords = [...(item.k || [])];
             if (useExtended) {
                 if (item.k2) keywords = keywords.concat(item.k2);
                 if (item.k3) keywords = keywords.concat(item.k3);
             }
 
-            // 入力された「すべての文字」について、条件を満たすかチェック
             return inputChars.every(char => {
-                // 1. 漢字そのものに含まれるか
-                if (item.c.indexOf(char) !== -1) return true;
-                
-                // 2. キーワードのいずれかに含まれるか
-                return keywords.some(k => k.indexOf(char) !== -1);
+                const matchChar = item.c.includes(char) || item.c.includes(rawInput);
+                const matchKeyword = keywords.some(k => k.includes(char));
+                return matchChar || matchKeyword;
             });
         });
     }
 
-    // ソート処理
     filteredData.sort((a, b) => {
         if (sortOption === "grade_asc") return a.g - b.g;
         if (sortOption === "grade_desc") return b.g - a.g;
@@ -86,9 +315,7 @@ function searchKanji() {
         const card = document.createElement('div');
         card.className = 'kanji-card';
         card.onclick = () => openModal(item);
-
         const strokeDisplay = item.s > 0 ? item.s + '画' : '-';
-        
         card.innerHTML = `
             <span class="kanji-char">${item.c}</span>
             <div class="kanji-info">
@@ -108,24 +335,21 @@ function searchKanji() {
 function openModal(item) {
     const modal = document.getElementById('detailModal');
     if (!modal) return;
-    
     const body = document.getElementById('modalBody');
     const strokeDisplay = item.s > 0 ? item.s + '画' : '画数不明';
-
+    
+    // タグをクリックすると検索を実行
     const makeTags = (list, className) => {
         if (!list || list.length === 0) return '<span style="color:#ccc; font-size:12px;">なし</span>';
-        // クリック時に検索を実行するリンクを作成
         return list.map(word => `<span class="${className} clickable-tag" onclick="searchByTag('${word}')">${word}</span>`).join('');
     };
 
-    // 類似漢字検索ロジック（一致率順）
+    // 類似漢字
     let similarHtml = '';
-    
     if (item.k && item.k.length > 0) {
         const myKeywords = item.k;
-        
         const similarItems = KANJI_DATA.map(otherItem => {
-            if (otherItem.c === item.c) return null; // 自分自身は除外
+            if (otherItem.c === item.c) return null;
             if (!otherItem.k || otherItem.k.length === 0) return null;
             
             const commonKeywords = otherItem.k.filter(k => myKeywords.includes(k));
@@ -134,17 +358,11 @@ function openModal(item) {
 
             if (commonCount >= 2) {
                 const ratio = commonCount / totalKeywords;
-                return {
-                    data: otherItem,
-                    count: commonCount,
-                    total: totalKeywords,
-                    ratio: ratio
-                };
+                return { data: otherItem, count: commonCount, total: totalKeywords, ratio: ratio };
             }
             return null;
         }).filter(val => val !== null);
 
-        // 一致率が高い順にソート
         similarItems.sort((a, b) => {
             if (b.ratio !== a.ratio) return b.ratio - a.ratio;
             return b.count - a.count;
@@ -152,20 +370,12 @@ function openModal(item) {
 
         if (similarItems.length > 0) {
             let listHtml = similarItems.map(sim => {
-                return `
-                    <div class="similar-card" onclick="openModalByChar('${sim.data.c}')">
+                return `<div class="similar-card" onclick="openModalByChar('${sim.data.c}')">
                         <span class="similar-char">${sim.data.c}</span>
                         <span class="similar-info">共通:${sim.count}/${sim.total}</span>
-                    </div>
-                `;
+                    </div>`;
             }).join('');
-
-            similarHtml = `
-                <div class="similar-section">
-                    <span class="similar-title">🔍 似ている漢字（一致率順）</span>
-                    <div class="similar-list">${listHtml}</div>
-                </div>
-            `;
+            similarHtml = `<div class="similar-section"><span class="similar-title">🔍 似ている漢字（一致率順）</span><div class="similar-list">${listHtml}</div></div>`;
         }
     }
 
@@ -174,28 +384,19 @@ function openModal(item) {
             <span class="detail-char">${item.c}</span>
             <div class="detail-meta">小学${item.g}年生 / ${strokeDisplay}</div>
         </div>
-        <div class="keyword-section">
-            <span class="keyword-title">基本キーワード (k)</span>
-            <div class="keyword-tags">${makeTags(item.k, 'k-tag')}</div>
-        </div>
-        <div class="keyword-section">
-            <span class="keyword-title">拡張キーワード1 (k2)</span>
-            <div class="keyword-tags">${makeTags(item.k2, 'k2-tag')}</div>
-        </div>
-        <div class="keyword-section">
-            <span class="keyword-title">拡張キーワード2 (k3)</span>
-            <div class="keyword-tags">${makeTags(item.k3, 'k3-tag')}</div>
-        </div>
+        <div class="keyword-section"><span class="keyword-title">基本キーワード (k)</span><div class="keyword-tags">${makeTags(item.k, 'k-tag')}</div></div>
+        <div class="keyword-section"><span class="keyword-title">拡張キーワード1 (k2)</span><div class="keyword-tags">${makeTags(item.k2, 'k2-tag')}</div></div>
+        <div class="keyword-section"><span class="keyword-title">拡張キーワード2 (k3)</span><div class="keyword-tags">${makeTags(item.k3, 'k3-tag')}</div></div>
         ${similarHtml}
     `;
-
     modal.style.display = "block";
 }
 
-// タグクリックで検索を実行する関数
 function searchByTag(tag) {
     closeModal();
     document.getElementById('kanjiInput').value = tag;
+    const checkbox = document.getElementById('useExtendedSearch');
+    if (checkbox) checkbox.checked = true;
     searchKanji();
 }
 
@@ -208,16 +409,12 @@ function closeModal() {
     const modal = document.getElementById('detailModal');
     if (modal) modal.style.display = "none";
 }
-
 window.onclick = function(event) {
-    const modal = document.getElementById('detailModal');
-    if (event.target == modal) {
-        modal.style.display = "none";
-    }
+    if (event.target == document.getElementById('detailModal')) closeModal();
 }
 
 // ------------------------------------
-// 語群検索機能（GAS連動）
+// 語群検索機能
 // ------------------------------------
 async function loadData() {
     const countEl = document.getElementById('resultCount');
@@ -236,22 +433,10 @@ async function loadData() {
     }
 }
 
-// 文字の正規化（濁点・半濁点・拗音の除去）
-function normalizeString(str) {
-    let res = str.normalize('NFD').replace(/[\u3099\u309A]/g, "");
-    const smallToLarge = {
-        'っ': 'つ', 'ゃ': 'や', 'ゅ': 'ゆ', 'ょ': 'よ',
-        'ぁ': 'あ', 'ぃ': 'い', 'ぅ': 'う', 'ぇ': 'え', 'ぉ': 'お'
-    };
-    return res.split('').map(char => smallToLarge[char] || char).join('');
-}
-
-// ハイライト用のHTML生成関数
 function createHighlightedHtml(word, inputChars, looseMode) {
     let html = "";
     for (let char of word) {
         let isMatch = false;
-        
         for (let inputChar of inputChars) {
             let c1 = char.toLowerCase();
             let c2 = inputChar.toLowerCase();
@@ -259,10 +444,7 @@ function createHighlightedHtml(word, inputChars, looseMode) {
                 c1 = normalizeString(c1);
                 c2 = normalizeString(c2);
             }
-            if (c1 === c2) {
-                isMatch = true;
-                break;
-            }
+            if (c1 === c2) { isMatch = true; break; }
         }
         if (isMatch) html += `<span class="highlight">${char}</span>`;
         else html += char;
@@ -304,7 +486,6 @@ function searchWords() {
                 targetChar = normalizeString(targetChar);
                 targetTextToSearch = normalizeString(targetTextToSearch);
             }
-            
             return !targetTextToSearch.includes(targetChar);
         });
         
