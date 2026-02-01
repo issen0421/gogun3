@@ -58,7 +58,6 @@ let selectedCells = [];
 async function loadTxtData() {
     const statusEl = document.getElementById('txtStatus');
     try {
-        // 同じフォルダにある「日本語一般語.txt」を読み込む
         const response = await fetch('日本語一般語.txt');
         if (!response.ok) throw new Error("File not found");
         const text = await response.text();
@@ -80,7 +79,6 @@ function initGojuuonTable() {
             const div = document.createElement('div');
             div.className = char ? 'cell' : 'cell empty';
             div.innerText = char;
-            // 座標データを持たせる
             div.dataset.r = rIndex;
             div.dataset.c = cIndex;
             div.dataset.char = char;
@@ -101,11 +99,9 @@ function initGojuuonTable() {
 
 function onCellClick(div, r, c, char) {
     if (selectedCells.length > 0 && selectedCells[selectedCells.length-1].char === char) {
-        // 末尾と同じなら削除（直前の選択キャンセル）
         selectedCells.pop();
         div.classList.remove('selected');
     } else {
-        // 新規選択
         selectedCells.push({char: char, r: r, c: c});
         div.classList.add('selected');
     }
@@ -143,7 +139,6 @@ function drawLines() {
     ctx.lineJoin = "round";
 
     selectedCells.forEach((cell, index) => {
-        // 座標から対応するDOM要素を探して位置を取得
         const targetDiv = grid.querySelector(`div[data-r="${cell.r}"][data-c="${cell.c}"]`);
         if (targetDiv) {
             const rect = targetDiv.getBoundingClientRect();
@@ -162,12 +157,13 @@ function drawLines() {
 function searchByShape() {
     const resultArea = document.getElementById('gojuonResultArea');
     const allowRotation = document.getElementById('allowRotation').checked;
+    const allowReflection = document.getElementById('allowReflection').checked;
     
     resultArea.innerHTML = "";
     
     if (selectedCells.length < 2) return;
 
-    // 1. 入力のベクトル列を作成 (dr, dc)
+    // 1. 入力のベクトル列を作成
     const inputVectors = [];
     for(let i=0; i<selectedCells.length-1; i++) {
         inputVectors.push({
@@ -180,14 +176,11 @@ function searchByShape() {
 
     // 2. テキストファイルから読み込んだ単語リストに対して検索
     txtWordList.forEach(word => {
-        // 文字数が一致しないと形も合わない
         if (word.length !== selectedCells.length) return;
 
-        // 単語の各文字の座標を取得
         const coords = [];
         let isValid = true;
         for (let char of word) {
-            // 濁点などを取って座標を探す
             const normalized = normalizeString(char);
             const coord = getCoord(normalized);
             if (!coord) {
@@ -196,9 +189,10 @@ function searchByShape() {
             }
             coords.push(coord);
         }
+
         if (!isValid) return;
 
-        // 単語のベクトル列を計算
+        // 単語のベクトル列
         const wordVectors = [];
         for(let i=0; i<coords.length-1; i++) {
             wordVectors.push({
@@ -207,30 +201,49 @@ function searchByShape() {
             });
         }
 
-        // 比較（0度, 90度, 180度, 270度）
         let isMatch = false;
 
-        // 0度 (そのまま)
-        if (compareVectors(inputVectors, wordVectors)) isMatch = true;
-
-        if (!isMatch && allowRotation) {
-            // 90度回転 (dr, dc) -> (dc, -dr) ※行は下プラス、列は右プラスの座標系
-            // 行列回転の考え方: (x, y) -> (y, -x) 
-            // r(行)がy, c(列)がx。
-            // (dr, dc) -> (dc, -dr)
-            let rotated90 = inputVectors.map(v => ({ dr: v.dc, dc: -v.dr }));
-            if (compareVectors(rotated90, wordVectors)) isMatch = true;
-
-            // 180度 (-dr, -dc)
-            if (!isMatch) {
-                let rotated180 = inputVectors.map(v => ({ dr: -v.dr, dc: -v.dc }));
-                if (compareVectors(rotated180, wordVectors)) isMatch = true;
+        // ベクトル比較関数
+        const check = (vecs1, vecs2) => {
+            if (vecs1.length !== vecs2.length) return false;
+            for(let i=0; i<vecs1.length; i++) {
+                if (vecs1[i].dr !== vecs2[i].dr || vecs1[i].dc !== vecs2[i].dc) return false;
             }
+            return true;
+        };
 
-            // 270度 (-dc, dr)
-            if (!isMatch) {
-                let rotated270 = inputVectors.map(v => ({ dr: -v.dc, dc: v.dr }));
-                if (compareVectors(rotated270, wordVectors)) isMatch = true;
+        // --- 回転・反転パターンの生成 ---
+        // 基本: [dr, dc]
+        // 90度: [dc, -dr]
+        // 180度: [-dr, -dc]
+        // 270度: [-dc, dr]
+        // 反転(左右): [dr, -dc]
+        
+        let patterns = [inputVectors]; // 0度
+
+        // 回転あり
+        if (allowRotation) {
+            const rot90 = inputVectors.map(v => ({ dr: v.dc, dc: -v.dr }));
+            const rot180 = inputVectors.map(v => ({ dr: -v.dr, dc: -v.dc }));
+            const rot270 = inputVectors.map(v => ({ dr: -v.dc, dc: v.dr }));
+            patterns.push(rot90, rot180, rot270);
+        }
+
+        // 反転あり（現在のパターン全てに対して反転を作る）
+        if (allowReflection) {
+            const currentPatterns = [...patterns];
+            currentPatterns.forEach(pat => {
+                // 左右反転: dcを反転
+                const reflected = pat.map(v => ({ dr: v.dr, dc: -v.dc }));
+                patterns.push(reflected);
+            });
+        }
+
+        // マッチング確認
+        for(let pat of patterns) {
+            if (check(pat, wordVectors)) {
+                isMatch = true;
+                break;
             }
         }
 
@@ -239,7 +252,6 @@ function searchByShape() {
         }
     });
     
-    // 結果表示
     if (matchedWords.length === 0) {
         resultArea.innerHTML = `<div class="no-result">見つかりませんでした</div>`;
         return;
@@ -255,18 +267,6 @@ function searchByShape() {
     resultArea.appendChild(card);
 }
 
-// ベクトル配列の比較
-function compareVectors(vecs1, vecs2) {
-    if (vecs1.length !== vecs2.length) return false;
-    for(let i=0; i<vecs1.length; i++) {
-        if (vecs1[i].dr !== vecs2[i].dr || vecs1[i].dc !== vecs2[i].dc) {
-            return false;
-        }
-    }
-    return true;
-}
-
-// 文字から座標(r, c)を返すヘルパー
 function getCoord(char) {
     for(let r=0; r<GOJUON_LAYOUT.length; r++) {
         for(let c=0; c<GOJUON_LAYOUT[r].length; c++) {
