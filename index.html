@@ -21,7 +21,7 @@
 
     <!-- 語群検索タブ -->
     <div id="tab-word" class="tab-content active">
-        <p class="description">スプレッドシート連動版</p>
+        <p class="description">スプレッドシート(語群用)連動版</p>
         <div class="search-box">
             <input type="text" id="searchInput" placeholder="ひらがなorアルファベットを入力" oninput="searchWords()">
             <div class="options">
@@ -122,24 +122,22 @@
     <!-- ▼▼▼ 解き直し検索タブ ▼▼▼ -->
     <div id="tab-redone" class="tab-content">
         <p class="description">
-            語群内で「ある文字」が「別の文字」に対応している単語ペアを探します
+            スプレッドシート(解き直し用)内の単語ペアから文字変換を探します
         </p>
         
         <div class="search-box">
             <div style="display:flex; justify-content: center; align-items: center; gap:10px; margin-bottom:10px;">
-                <input type="text" id="redoneFrom" placeholder="元" style="width:80px; text-align:center;" maxlength="1">
+                <!-- ★変更: placeholderを変換前/変換後に -->
+                <input type="text" id="redoneFrom" placeholder="変換前" style="width:80px; text-align:center;" maxlength="1">
                 <span style="font-size:20px; font-weight:bold;">→</span>
-                <input type="text" id="redoneTo" placeholder="先" style="width:80px; text-align:center;" maxlength="1">
+                <input type="text" id="redoneTo" placeholder="変換後" style="width:80px; text-align:center;" maxlength="1">
                 <button class="tab-btn active" style="margin-left:10px;" onclick="searchRedone()">検索</button>
             </div>
             <div class="options">
                 <label class="checkbox-label">
                     <input type="checkbox" id="matchLastChar" onchange="searchRedone()">
-                    最後の文字を対応させる（例: あか・れっど → か/ど）
+                    最後の文字を対応させる（あか・れっど → か/ど）
                 </label>
-            </div>
-            <!-- ★追加: 文字数一致チェックボックス -->
-            <div class="options">
                 <label class="checkbox-label">
                     <input type="checkbox" id="matchSameLength" onchange="searchRedone()">
                     文字数が同じペアのみ
