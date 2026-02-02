@@ -1,4 +1,4 @@
-// パーツ自動展開
+// パーツ自動展開ルール
 const PART_EXPANSION = {
     "田": ["ヨ", "口", "ロ", "日", "十", "コ"],
     "言": ["口", "ロ"],
@@ -13,12 +13,20 @@ const PART_EXPANSION = {
 
 function expandKanjiKeywords() {
     if (typeof KANJI_DATA === 'undefined') return;
+    
     KANJI_DATA.forEach(item => {
+        // ★エラー対策：k2, k3 がない場合は空配列で初期化する
+        if (!item.k2) item.k2 = [];
+        if (!item.k3) item.k3 = [];
+
         if (item.k && item.k.length > 0) {
             item.k.forEach(key => {
                 if (PART_EXPANSION[key]) {
                     PART_EXPANSION[key].forEach(expandedPart => {
-                        if (!item.k2.includes(expandedPart)) item.k2.push(expandedPart);
+                        // 重複チェックして追加
+                        if (!item.k2.includes(expandedPart)) {
+                            item.k2.push(expandedPart);
+                        }
                     });
                 }
             });
@@ -27,8 +35,10 @@ function expandKanjiKeywords() {
 }
 
 function searchKanji() {
+    // 画面の入力値は書き換えず、取得だけする
     const rawInput = document.getElementById('kanjiInput').value.trim();
     const searchInput = rawInput; 
+
     const sortOption = document.getElementById('sortOption').value;
     const useK2 = document.getElementById('useK2').checked;
     const useK3 = document.getElementById('useK3').checked;
@@ -48,6 +58,7 @@ function searchKanji() {
         const inputChars = searchInput.split('');
 
         filteredData = KANJI_DATA.filter(item => {
+            // ★エラー対策：存在確認をしてから結合
             let keywords = [...(item.k || [])];
             if (useK2 && item.k2) keywords = keywords.concat(item.k2);
             if (useK3 && item.k3) keywords = keywords.concat(item.k3);
@@ -102,6 +113,7 @@ function openModal(item) {
     };
 
     let similarHtml = '';
+    // ★エラー対策：ここでも存在確認
     let allMyKeywords = [...(item.k || [])];
     if(item.k2) allMyKeywords = allMyKeywords.concat(item.k2);
     if(item.k3) allMyKeywords = allMyKeywords.concat(item.k3);
