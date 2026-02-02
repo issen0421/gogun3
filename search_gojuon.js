@@ -7,10 +7,10 @@ const GOJUON_LAYOUT = [
     ['','を','ろ','よ','も','ほ','の','と','そ','こ','お']
 ];
 
-// 辞書読み込み
 async function loadAllDictionaries() {
     const statusEl = document.getElementById('txtStatus');
-    statusEl.innerText = "辞書読み込み中...";
+    if(statusEl) statusEl.innerText = "辞書読み込み中...";
+    
     const loadFile = async (filename) => {
         try {
             const res = await fetch(filename);
@@ -30,18 +30,26 @@ async function loadAllDictionaries() {
     dictPig = pig;
     dictEnglish = eng;
 
-    let msg = "";
-    msg += `日:${std.length}語 `;
-    msg += `豚:${pig.length}語 `;
-    msg += `英:${eng.length}語`;
-    statusEl.innerText = msg;
+    if(statusEl) {
+        let msg = "";
+        msg += `日:${std.length}語 `;
+        msg += `豚:${pig.length}語 `;
+        msg += `英:${eng.length}語`;
+        statusEl.innerText = msg;
+    }
 }
 
-// グリッド生成（共通）
+function initGojuuonTable() {
+    activeLayout = GOJUON_LAYOUT;
+    initGrid('gojuonGrid', 'lineCanvasGojuon', GOJUON_LAYOUT);
+}
+
+// グリッド生成（五十音・カスタム共通初期化処理）
 function initGrid(gridId, canvasId, layout) {
     const grid = document.getElementById(gridId);
     if(!grid) return;
     grid.innerHTML = "";
+    
     const cols = layout[0].length;
     grid.style.gridTemplateColumns = `repeat(${cols}, 40px)`;
     grid.style.gridTemplateRows = `repeat(${layout.length}, 40px)`;
@@ -55,13 +63,13 @@ function initGrid(gridId, canvasId, layout) {
             div.dataset.c = cIndex;
             div.dataset.char = char;
             if (char) {
-                div.onclick = () => onGojuonCellClick(div, rIndex, cIndex, char);
+                // word_data.js の共通関数を呼ぶ
+                div.onclick = () => onCellClick(div, rIndex, cIndex, char);
             }
             grid.appendChild(div);
         });
     });
     
-    // Canvas初期化
     setTimeout(() => {
         const canvas = document.getElementById(canvasId);
         if(canvas) {
@@ -71,45 +79,7 @@ function initGrid(gridId, canvasId, layout) {
     }, 100);
 }
 
-// 五十音表初期化
-function initGojuuonTable() {
-    // 最初は五十音レイアウト
-    activeLayout = GOJUON_LAYOUT;
-    initGrid('gojuonGrid', 'lineCanvasGojuon', GOJUON_LAYOUT);
-}
-
-// セルクリック（五十音表）
-function onGojuonCellClick(div, r, c, char) {
-    // 五十音モードでなければ無視
-    if (currentMode !== 'gojuon') return;
-
-    if (selectedCells.length > 0 && selectedCells[selectedCells.length-1].char === char) {
-        selectedCells.pop();
-        div.classList.remove('selected');
-    } else {
-        selectedCells.push({char: char, r: r, c: c});
-        div.classList.add('selected');
-    }
-    updateDisplay();
-    drawLinesCommon('lineCanvasGojuon', 'gojuonGrid', selectedCells);
-    searchGojuon();
-}
-
-function resetGojuon() {
-    selectedCells = [];
-    document.querySelectorAll('#gojuonGrid .cell').forEach(c => c.classList.remove('selected'));
-    updateDisplay();
-    drawLinesCommon('lineCanvasGojuon', 'gojuonGrid', selectedCells);
-    document.getElementById('gojuonResultArea').innerHTML = "";
-}
-
-function updateDisplay() {
-    const text = selectedCells.map(s => s.char).join(' → ');
-    const displayId = (currentMode === 'gojuon') ? 'gojuonSelectDisplay' : 'customSelectDisplay';
-    const displayEl = document.getElementById(displayId);
-    if(displayEl) displayEl.innerText = "選択: " + (text || "なし");
-}
-
+// 五十音表での検索（イベントハンドラから呼ばれる）
 function searchGojuon() {
     const useStd = document.getElementById('useDictStandard').checked;
     const usePig = document.getElementById('useDictPig').checked;
@@ -119,6 +89,16 @@ function searchGojuon() {
     if (usePig) targetWords = targetWords.concat(dictPig);
     targetWords = [...new Set(targetWords)];
 
-    // 共通検索ロジック呼び出し
     searchByShapeCommon(selectedCells, targetWords, GOJUON_LAYOUT, 'gojuonResultArea');
+}
+
+// ユーザーがトリガーする形状変更イベント用
+function searchByShape() {
+    if(currentMode === 'gojuon') searchGojuon();
+    else if(currentMode === 'custom') searchCustom();
+}
+
+// html側の古い関数名対応（念のため）
+function resetGojuon() {
+    resetSelection();
 }
