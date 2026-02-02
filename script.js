@@ -1,10 +1,10 @@
 // ▼▼▼ 語群検索用スプレッドシートのURL ▼▼▼
 const GAS_URL_WORD = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq2lxuWtuOMpGWsc_D7MtMn0tgdVjTqE8m_7cbcguahrbkCEtd_Uw/exec"; 
-// ▼▼▼ 解き直し検索用スプレッドシートのURL（新しいURLに更新済み） ▼▼▼
+// ▼▼▼ 解き直し検索用スプレッドシートのURL ▼▼▼
 const GAS_URL_REDONE = "https://script.google.com/macros/s/AKfycbwXDCSMakZ9lNb23ZFSSZk2fEJjLorzfIM5leiDIg_z3zsgFVn3L_59GSGkiYifElMG/exec"; 
 
-let appData = []; // 語群検索用データ
-let redoneData = []; // 解き直し検索用データ
+let appData = []; 
+let redoneData = []; 
 let dictStandard = []; // 日本語一般語.txt
 let dictPig = [];      // 豚辞書.txt
 let dictEnglish = [];  // 英語一般語.txt
@@ -16,12 +16,11 @@ let selectedCells = [];
 let customLayout = [];
 
 window.onload = function() {
-    loadData(); // 語群検索用
-    loadRedoneData(); // 解き直し検索用
+    loadData(); 
+    loadRedoneData(); 
     loadAllDictionaries(); 
     
     if (typeof KANJI_DATA !== 'undefined') {
-        // 漢字データの自動展開処理
         expandKanjiKeywords();
         searchKanji();
     }
@@ -62,9 +61,7 @@ function normalizeString(str) {
     return res.split('').map(char => smallToLarge[char] || char).join('');
 }
 
-// ------------------------------------
 // 漢字データのパーツ自動展開ロジック
-// ------------------------------------
 const PART_EXPANSION = {
     "田": ["ヨ", "口", "ロ", "日", "十", "コ"],
     "言": ["口", "ロ"],
@@ -84,9 +81,7 @@ function expandKanjiKeywords() {
             item.k.forEach(key => {
                 if (PART_EXPANSION[key]) {
                     PART_EXPANSION[key].forEach(expandedPart => {
-                        if (!item.k2.includes(expandedPart)) {
-                            item.k2.push(expandedPart);
-                        }
+                        if (!item.k2.includes(expandedPart)) item.k2.push(expandedPart);
                     });
                 }
             });
@@ -134,7 +129,6 @@ function searchRedone() {
 
     let foundPairs = [];
 
-    // redoneDataを使用
     redoneData.forEach(group => {
         const words = Array.isArray(group.words) ? group.words : [];
         if (words.length < 2) return;
@@ -394,6 +388,7 @@ function searchByShape() {
     const allowReflection = document.getElementById('allowReflection' + suffix).checked;
     const useStd = document.getElementById('useDictStandard' + suffix).checked;
     const usePig = document.getElementById('useDictPig' + suffix).checked;
+    // カスタムの方には英語辞書チェックボックスがある前提
     const useEngEl = document.getElementById('useDictEnglish' + suffix);
     const useEng = useEngEl ? useEngEl.checked : false;
 
@@ -510,8 +505,6 @@ function searchKanji() {
     const searchInput = rawInput;
 
     const sortOption = document.getElementById('sortOption').value;
-    
-    // k2, k3 のチェック状態を個別に取得
     const useK2 = document.getElementById('useK2').checked;
     const useK3 = document.getElementById('useK3').checked;
     
