@@ -2,23 +2,26 @@
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq2lxuWtuOMpGWsc_D7MtMn0tgdVjTqE8m_7cbcguahrbkCEtd_Uw/exec"; 
 // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
-let appData = []; // 語群データ
-let txtWordList = []; // 日本語一般語.txtのデータ
+let appData = []; 
+let dictStandard = []; // 日本語一般語.txt
+let dictPig = [];      // 豚辞書.txt
+let dictEnglish = [];  // 英語一般語.txt
 
-// 現在のモード管理（五十音 or カスタム）
+// モード管理
 let currentMode = 'gojuon'; // 'gojuon' or 'custom'
-let activeLayout = []; // 現在使用中のレイアウト配列
-let selectedCells = []; // 選択されたセル
+let activeLayout = []; 
+let selectedCells = []; 
+let customLayout = [];
 
 window.onload = function() {
     loadData(); 
-    loadTxtData(); 
+    loadAllDictionaries(); 
     
     if (typeof KANJI_DATA !== 'undefined') {
         searchKanji();
     }
     
-    // 初期は五十音表
+    // 初期化：五十音
     activeLayout = GOJUON_LAYOUT;
     initGrid('gojuonGrid', 'lineCanvasGojuon', GOJUON_LAYOUT);
 };
@@ -30,41 +33,30 @@ function switchTab(tabName) {
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
     document.getElementById(`tab-${tabName}`).classList.add('active');
 
-    // モード切り替えとリセット
     if (tabName === 'gojuon') {
         currentMode = 'gojuon';
         activeLayout = GOJUON_LAYOUT;
         resetSelection();
     } else if (tabName === 'custom') {
         currentMode = 'custom';
-        // カスタムレイアウトが未作成なら何もしない（作成ボタン待ち）
-        if (customLayout.length > 0) {
-            activeLayout = customLayout;
-        }
+        if (customLayout.length > 0) activeLayout = customLayout;
         resetSelection();
     }
 }
 
-// ------------------------------------
 // 共通ユーティリティ
-// ------------------------------------
 function hiraToKata(str) {
-    return str.replace(/[\u3041-\u3096]/g, function(match) {
-        var chr = match.charCodeAt(0) + 0x60;
-        return String.fromCharCode(chr);
-    });
+    return str.replace(/[\u3041-\u3096]/g, m => String.fromCharCode(m.charCodeAt(0) + 0x60));
 }
 function normalizeString(str) {
+    // アルファベットは大文字に統一
     let res = str.normalize('NFD').replace(/[\u3099\u309A]/g, "");
-    const smallToLarge = {
-        'っ':'つ', 'ゃ':'や', 'ゅ':'ゆ', 'ょ':'よ', 'ぁ':'あ', 'ぃ':'い', 'ぅ':'う', 'ぇ':'え', 'ぉ':'お'
-    };
+    res = res.toUpperCase();
+    const smallToLarge = { 'っ':'つ', 'ゃ':'や', 'ゅ':'ゆ', 'ょ':'よ', 'ぁ':'あ', 'ぃ':'い', 'ぅ':'う', 'ぇ':'え', 'ぉ':'お' };
     return res.split('').map(char => smallToLarge[char] || char).join('');
 }
 
-// ------------------------------------
-// 五十音表・カスタム表 検索機能
-// ------------------------------------
+// 五十音表レイアウト
 const GOJUON_LAYOUT = [
     ['ん','わ','ら','や','ま','は','な','た','さ','か','あ'],
     ['','','り','','み','ひ','に','ち','し','き','い'],
@@ -73,10 +65,8 @@ const GOJUON_LAYOUT = [
     ['','を','ろ','よ','も','ほ','の','と','そ','こ','お']
 ];
 
-let customLayout = [];
-
 // 辞書読み込み
-async function loadTxtData() {
+async function loadAllDictionaries() {
     const statusEl = document.getElementById('txtStatus');
     statusEl.innerText = "辞書読み込み中...";
     const loadFile = async (filename) => {
@@ -85,26 +75,31 @@ async function loadTxtData() {
             if (!res.ok) return [];
             const text = await res.text();
             return text.split(/\r\n|\n/).map(w => w.trim()).filter(w => w);
-        } catch (e) {
-            return [];
-        }
+        } catch (e) { return []; }
     };
-    const [std, pig] = await Promise.all([loadFile('日本語一般語.txt'), loadFile('豚辞書.txt')]);
+
+    const [std, pig, eng] = await Promise.all([
+        loadFile('日本語一般語.txt'),
+        loadFile('豚辞書.txt'),
+        loadFile('英語一般語.txt')
+    ]);
+
     dictStandard = std;
     dictPig = pig;
+    dictEnglish = eng;
+
     let msg = "";
-    msg += (dictStandard.length > 0) ? `一般語:${dictStandard.length}語 ` : `一般語:読込失敗 `;
-    msg += (dictPig.length > 0) ? `豚辞書:${dictPig.length}語 ` : `豚辞書:読込失敗 `;
+    msg += `日:${std.length}語 `;
+    msg += `豚:${pig.length}語 `;
+    msg += `英:${eng.length}語`;
     statusEl.innerText = msg;
 }
 
-// グリッド生成（汎用）
+// グリッド生成（共通）
 function initGrid(gridId, canvasId, layout) {
     const grid = document.getElementById(gridId);
     if(!grid) return;
-    
     grid.innerHTML = "";
-    // 列数をCSSグリッドに適用
     const cols = layout[0].length;
     grid.style.gridTemplateColumns = `repeat(${cols}, 40px)`;
     grid.style.gridTemplateRows = `repeat(${layout.length}, 40px)`;
@@ -117,14 +112,12 @@ function initGrid(gridId, canvasId, layout) {
             div.dataset.r = rIndex;
             div.dataset.c = cIndex;
             div.dataset.char = char;
-            
             if (char) {
                 div.onclick = () => onCellClick(div, rIndex, cIndex, char);
             }
             grid.appendChild(div);
         });
     });
-    
     setTimeout(() => {
         const canvas = document.getElementById(canvasId);
         if(canvas) {
@@ -134,14 +127,13 @@ function initGrid(gridId, canvasId, layout) {
     }, 100);
 }
 
-// カスタム表の作成
+// カスタム表作成
 function createCustomTable() {
-    const text = document.getElementById('customInputText').value.replace(/\s/g, ''); // 改行もスペースも詰める
+    // アルファベットは大文字に統一して処理
+    const text = document.getElementById('customInputText').value.replace(/\s/g, '').toUpperCase();
     const cols = parseInt(document.getElementById('customCols').value, 10);
-    
     if(!text || cols < 1) return;
 
-    // 文字列をグリッド配列に変換
     customLayout = [];
     let currentRow = [];
     for (let i = 0; i < text.length; i++) {
@@ -152,12 +144,11 @@ function createCustomTable() {
         }
     }
     if (currentRow.length > 0) {
-        // 残りを空文字で埋める
         while(currentRow.length < cols) currentRow.push('');
         customLayout.push(currentRow);
     }
 
-    activeLayout = customLayout; // アクティブレイアウトを更新
+    activeLayout = customLayout;
     resetSelection();
     initGrid('customGrid', 'lineCanvasCustom', customLayout);
 }
@@ -170,7 +161,6 @@ function onCellClick(div, r, c, char) {
         selectedCells.push({char: char, r: r, c: c});
         div.classList.add('selected');
     }
-    
     updateDisplay();
     drawLines();
     searchByShape();
@@ -181,8 +171,6 @@ function resetSelection() {
     document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
     updateDisplay();
     drawLines();
-    
-    // 結果表示エリアのクリア（モードによって対象を変える）
     const resultId = (currentMode === 'gojuon') ? 'gojuonResultArea' : 'customResultArea';
     document.getElementById(resultId).innerHTML = "";
 }
@@ -195,10 +183,8 @@ function updateDisplay() {
 }
 
 function drawLines() {
-    // 現在のモードに応じたキャンバスとグリッドを取得
     const canvasId = (currentMode === 'gojuon') ? 'lineCanvasGojuon' : 'lineCanvasCustom';
     const gridId = (currentMode === 'gojuon') ? 'gojuonGrid' : 'customGrid';
-    
     const canvas = document.getElementById(canvasId);
     const grid = document.getElementById(gridId);
     if (!canvas || !grid) return;
@@ -220,7 +206,6 @@ function drawLines() {
             const gridRect = grid.getBoundingClientRect();
             const x = rect.left - gridRect.left + rect.width / 2;
             const y = rect.top - gridRect.top + rect.height / 2;
-
             if (index === 0) ctx.moveTo(x, y);
             else ctx.lineTo(x, y);
         }
@@ -228,24 +213,28 @@ function drawLines() {
     ctx.stroke();
 }
 
-// 形状検索ロジック（汎用）
+// 形状検索
 function searchByShape() {
-    // 結果表示エリアの切り替え
-    const resultArea = document.getElementById((currentMode === 'gojuon') ? 'gojuonResultArea' : 'customResultArea');
+    const isCustom = (currentMode === 'custom');
+    const resultArea = document.getElementById(isCustom ? 'customResultArea' : 'gojuonResultArea');
     
-    // オプション（五十音タブにあるものを共用）
-    const allowRotation = document.getElementById('allowRotation').checked;
-    const allowReflection = document.getElementById('allowReflection').checked;
-    const useStd = document.getElementById('useDictStandard').checked;
-    const usePig = document.getElementById('useDictPig').checked;
+    // IDの接尾辞を切り替え
+    const suffix = isCustom ? '_custom' : '';
+    const allowRotation = document.getElementById('allowRotation' + suffix).checked;
+    const allowReflection = document.getElementById('allowReflection' + suffix).checked;
+    const useStd = document.getElementById('useDictStandard' + suffix).checked;
+    const usePig = document.getElementById('useDictPig' + suffix).checked;
+    // カスタムの方には英語辞書チェックボックスがある前提
+    const useEngEl = document.getElementById('useDictEnglish' + suffix);
+    const useEng = useEngEl ? useEngEl.checked : false;
 
     resultArea.innerHTML = "";
-    
     if (selectedCells.length < 2) return;
 
     let targetWords = [];
     if (useStd) targetWords = targetWords.concat(dictStandard);
     if (usePig) targetWords = targetWords.concat(dictPig);
+    if (useEng) targetWords = targetWords.concat(dictEnglish);
     targetWords = [...new Set(targetWords)];
 
     if (targetWords.length === 0) return;
@@ -258,7 +247,6 @@ function searchByShape() {
         });
     }
 
-    // パターン生成（回転・反転）
     let patterns = [inputVectors]; 
     if (allowRotation) {
         const rot90 = inputVectors.map(v => ({ dr: v.dc, dc: -v.dr }));
@@ -283,7 +271,7 @@ function searchByShape() {
         let isValid = true;
         for (let char of word) {
             const normalized = normalizeString(char);
-            // ★重要：現在のレイアウト(activeLayout)を使って座標を探す
+            // ★現在のレイアウトから座標を探す
             const coord = getCoord(normalized, activeLayout);
             if (!coord) {
                 isValid = false;
@@ -291,7 +279,6 @@ function searchByShape() {
             }
             coords.push(coord);
         }
-
         if (!isValid) return;
 
         const wordVectors = [];
@@ -336,13 +323,10 @@ function searchByShape() {
     resultArea.appendChild(card);
 }
 
-// 座標取得（レイアウト指定対応）
 function getCoord(char, layout) {
     for(let r=0; r<layout.length; r++) {
         for(let c=0; c<layout[r].length; c++) {
-            if (layout[r][c] === char) {
-                return {r: r, c: c};
-            }
+            if (layout[r][c] === char) return {r, c};
         }
     }
     return null;
@@ -372,14 +356,12 @@ function searchKanji() {
 
     if (searchInput) {
         const inputChars = searchInput.split('');
-
         filteredData = KANJI_DATA.filter(item => {
             let keywords = [...(item.k || [])];
             if (useExtended) {
                 if (item.k2) keywords = keywords.concat(item.k2);
                 if (item.k3) keywords = keywords.concat(item.k3);
             }
-
             return inputChars.every(char => {
                 const matchChar = item.c.includes(char) || item.c.includes(rawInput);
                 const matchKeyword = keywords.some(k => k.includes(char));
@@ -480,8 +462,6 @@ function openModal(item) {
 function searchByTag(tag) {
     closeModal();
     document.getElementById('kanjiInput').value = tag;
-    const checkbox = document.getElementById('useExtendedSearch');
-    if (checkbox) checkbox.checked = true;
     searchKanji();
 }
 
@@ -499,7 +479,7 @@ window.onclick = function(event) {
 }
 
 // ------------------------------------
-// 語群検索機能
+// 語群検索機能（GAS連動）
 // ------------------------------------
 async function loadData() {
     const countEl = document.getElementById('resultCount');
