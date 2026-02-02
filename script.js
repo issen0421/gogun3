@@ -70,7 +70,6 @@ async function loadAllDictionaries() {
         }
     };
 
-    // 並行して読み込み
     const [std, pig] = await Promise.all([
         loadFile('日本語一般語.txt'),
         loadFile('豚辞書.txt')
@@ -185,20 +184,14 @@ function searchByShape() {
     
     if (selectedCells.length < 2) return;
 
-    // 検索対象の単語リストを作成
     let targetWords = [];
     if (useStd) targetWords = targetWords.concat(dictStandard);
     if (usePig) targetWords = targetWords.concat(dictPig);
-    
-    // 重複除去（Setを使う）
     targetWords = [...new Set(targetWords)];
 
-    if (targetWords.length === 0) {
-        document.getElementById('gojuonCount').innerText = "辞書が選択されていません、または空です";
-        return;
-    }
+    if (targetWords.length === 0) return;
 
-    // 1. 入力のベクトル列を作成
+    // 1. 入力ベクトル列
     const inputVectors = [];
     for(let i=0; i<selectedCells.length-1; i++) {
         inputVectors.push({
@@ -207,9 +200,27 @@ function searchByShape() {
         });
     }
 
+    // 2. パターン生成（回転・反転のみ、逆順なし）
+    let patterns = [inputVectors]; // 0度
+
+    if (allowRotation) {
+        const rot90 = inputVectors.map(v => ({ dr: v.dc, dc: -v.dr }));
+        const rot180 = inputVectors.map(v => ({ dr: -v.dr, dc: -v.dc }));
+        const rot270 = inputVectors.map(v => ({ dr: -v.dc, dc: v.dr }));
+        patterns.push(rot90, rot180, rot270);
+    }
+
+    if (allowReflection) {
+        const currentPatterns = [...patterns];
+        currentPatterns.forEach(pat => {
+            const reflected = pat.map(v => ({ dr: v.dr, dc: -v.dc }));
+            patterns.push(reflected);
+        });
+    }
+
     const matchedWords = [];
 
-    // 2. マッチング
+    // 3. マッチング
     targetWords.forEach(word => {
         if (word.length !== selectedCells.length) return;
 
@@ -235,7 +246,6 @@ function searchByShape() {
             });
         }
 
-        // ベクトル比較関数
         const check = (vecs1, vecs2) => {
             if (vecs1.length !== vecs2.length) return false;
             for(let i=0; i<vecs1.length; i++) {
@@ -244,47 +254,27 @@ function searchByShape() {
             return true;
         };
 
-        let patterns = [inputVectors]; // 0度
-
-        if (allowRotation) {
-            const rot90 = inputVectors.map(v => ({ dr: v.dc, dc: -v.dr }));
-            const rot180 = inputVectors.map(v => ({ dr: -v.dr, dc: -v.dc }));
-            const rot270 = inputVectors.map(v => ({ dr: -v.dc, dc: v.dr }));
-            patterns.push(rot90, rot180, rot270);
-        }
-
-        if (allowReflection) {
-            const currentPatterns = [...patterns];
-            currentPatterns.forEach(pat => {
-                const reflected = pat.map(v => ({ dr: v.dr, dc: -v.dc }));
-                patterns.push(reflected);
-            });
-        }
-
-        let isMatch = false;
         for(let pat of patterns) {
             if (check(pat, wordVectors)) {
-                isMatch = true;
+                matchedWords.push(word);
                 break;
             }
         }
-
-        if (isMatch) {
-            matchedWords.push(word);
-        }
     });
-    
-    // 結果表示
-    if (matchedWords.length === 0) {
+
+    const uniqueMatches = [...new Set(matchedWords)];
+    uniqueMatches.sort((a, b) => a.localeCompare(b, 'ja'));
+
+    if (uniqueMatches.length === 0) {
         resultArea.innerHTML = `<div class="no-result">見つかりませんでした</div>`;
         return;
     }
 
     const card = document.createElement('div');
     card.className = 'group-card match-perfect';
-    const wordsHtml = matchedWords.map(w => `<span class="word-item">${w}</span>`).join("");
+    const wordsHtml = uniqueMatches.map(w => `<span class="word-item">${w}</span>`).join("");
     card.innerHTML = `
-        <span class="group-name">同じ形の単語 (${matchedWords.length}件)</span>
+        <span class="group-name">同じ形の単語 (${uniqueMatches.length}件)</span>
         <div class="word-list">${wordsHtml}</div>
     `;
     resultArea.appendChild(card);
@@ -306,9 +296,7 @@ function getCoord(char) {
 // ------------------------------------
 function searchKanji() {
     const rawInput = document.getElementById('kanjiInput').value.trim();
-    // 漢字検索: 入力をそのまま使用（内部変換なし）
     const searchInput = rawInput;
-
     const sortOption = document.getElementById('sortOption').value;
     const checkbox = document.getElementById('useExtendedSearch');
     const useExtended = checkbox ? checkbox.checked : false;
@@ -380,6 +368,7 @@ function openModal(item) {
     const body = document.getElementById('modalBody');
     const strokeDisplay = item.s > 0 ? item.s + '画' : '画数不明';
     
+    // タグをクリックすると検索を実行
     const makeTags = (list, className) => {
         if (!list || list.length === 0) return '<span style="color:#ccc; font-size:12px;">なし</span>';
         return list.map(word => `<span class="${className} clickable-tag" onclick="searchByTag('${word}')">${word}</span>`).join('');
@@ -435,8 +424,7 @@ function openModal(item) {
 function searchByTag(tag) {
     closeModal();
     document.getElementById('kanjiInput').value = tag;
-    const checkbox = document.getElementById('useExtendedSearch');
-    if (checkbox) checkbox.checked = true;
+    // 勝手にチェックをつける処理は削除しました
     searchKanji();
 }
 
@@ -454,7 +442,7 @@ window.onclick = function(event) {
 }
 
 // ------------------------------------
-// 語群検索機能
+// 語群検索機能（GAS連動）
 // ------------------------------------
 async function loadData() {
     const countEl = document.getElementById('resultCount');
