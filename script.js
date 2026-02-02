@@ -1,7 +1,7 @@
 // ▼▼▼ 語群検索用スプレッドシートのURL ▼▼▼
 const GAS_URL_WORD = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq2lxuWtuOMpGWsc_D7MtMn0tgdVjTqE8m_7cbcguahrbkCEtd_Uw/exec"; 
 // ▼▼▼ 解き直し検索用スプレッドシートのURL（新しいURLを作成したらここに貼る） ▼▼▼
-const GAS_URL_REDONE = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq2lxuWtuOMpGWsc_D7MtMn0tgdVjTqE8m_7cbcguahrbkCEtd_Uw/exec"; 
+const GAS_URL_REDONE = "https://script.google.com/macros/s/AKfycbwXDCSMakZ9lNb23ZFSSZk2fEJjLorzfIM5leiDIg_z3zsgFVn3L_59GSGkiYifElMG/exec"; 
 // ※現在は仮で同じURLにしています。必要に応じて書き換えてください。
 
 let appData = []; 
