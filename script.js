@@ -16,15 +16,18 @@ let selectedCells = [];
 let customLayout = [];
 
 window.onload = function() {
+    // 1. 各種データ読み込み
     loadData(); 
     loadRedoneData(); 
     loadAllDictionaries(); 
     
+    // 2. 漢字データの自動展開処理（★ここが追加機能）
     if (typeof KANJI_DATA !== 'undefined') {
-        searchKanji();
+        expandKanjiKeywords(); // kの内容からk2を自動生成
+        searchKanji();         // その状態で初期検索
     }
     
-    // 初期化：五十音
+    // 3. 五十音表初期化
     activeLayout = GOJUON_LAYOUT;
     initGrid('gojuonGrid', 'lineCanvasGojuon', GOJUON_LAYOUT);
 };
@@ -59,6 +62,45 @@ function normalizeString(str) {
     const smallToLarge = { 'っ':'つ', 'ゃ':'や', 'ゅ':'ゆ', 'ょ':'よ', 'ぁ':'あ', 'ぃ':'い', 'ぅ':'う', 'ぇ':'え', 'ぉ':'お' };
     return res.split('').map(char => smallToLarge[char] || char).join('');
 }
+
+
+// ------------------------------------
+// ★追加機能：パーツ自動展開ロジック
+// ------------------------------------
+
+// ここに「このパーツがあったら、これをk2に追加する」というルールを書く
+const PART_EXPANSION = {
+    "田": ["ヨ", "口", "ロ", "日", "十", "コ"],
+    "言": ["口", "ロ"],
+    "音": ["立", "日"],
+    "車": ["日", "旦", "亘", "申", "口", "ロ", "田", "由", "甲"],
+    "門": ["日", "口", "ロ"],
+    "口": ["ロ", "コ"],
+    "日": ["口", "ロ", "コ", "ヨ"],
+    "目": ["日", "口", "ロ", "コ", "ヨ"],
+    "貝": ["目", "日", "口", "ロ", "八", "ハ"]
+    // 必要に応じてどんどん追加してください
+};
+
+function expandKanjiKeywords() {
+    KANJI_DATA.forEach(item => {
+        // k (基本キーワード) に登録されている文字をチェック
+        if (item.k && item.k.length > 0) {
+            item.k.forEach(key => {
+                // ルール定義にその文字があれば、中身を k2 に追加
+                if (PART_EXPANSION[key]) {
+                    PART_EXPANSION[key].forEach(expandedPart => {
+                        // 重複しないように追加
+                        if (!item.k2.includes(expandedPart)) {
+                            item.k2.push(expandedPart);
+                        }
+                    });
+                }
+            });
+        }
+    });
+}
+
 
 // ------------------------------------
 // 解き直し検索機能
@@ -465,10 +507,10 @@ function getCoord(char, layout) {
 // ------------------------------------
 function searchKanji() {
     const rawInput = document.getElementById('kanjiInput').value.trim();
+    // 漢字検索は入力をそのまま使用
     const searchInput = rawInput;
+
     const sortOption = document.getElementById('sortOption').value;
-    
-    // ★修正: k2, k3 のチェック状態を個別に取得
     const useK2 = document.getElementById('useK2').checked;
     const useK3 = document.getElementById('useK3').checked;
     
@@ -488,7 +530,6 @@ function searchKanji() {
         const inputChars = searchInput.split('');
 
         filteredData = KANJI_DATA.filter(item => {
-            // ★修正: チェック状態に応じてキーワードリストを構築
             let keywords = [...(item.k || [])];
             if (useK2 && item.k2) keywords = keywords.concat(item.k2);
             if (useK3 && item.k3) keywords = keywords.concat(item.k3);
@@ -601,8 +642,7 @@ function searchByTag(tag) {
     closeModal();
     document.getElementById('kanjiInput').value = tag;
     
-    // ★修正: タグ検索時は両方の拡張オプションをONにする（または検索対象として含めるようにJS側で調整）
-    // 今回はチェックボックスをONにする挙動にします
+    // タグ検索時はチェックボックスをONにする
     if(document.getElementById('useK2')) document.getElementById('useK2').checked = true;
     if(document.getElementById('useK3')) document.getElementById('useK3').checked = true;
 
@@ -630,7 +670,7 @@ async function loadData() {
     if (countEl) countEl.innerText = "データ読み込み中...";
 
     try {
-        const response = await fetch(GAS_URL_WORD);
+        const response = await fetch(GAS_URL_WORD); 
         if (!response.ok) throw new Error("Network response was not ok");
         appData = await response.json();
         
