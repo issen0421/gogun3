@@ -3,11 +3,11 @@ const GAS_URL_WORD = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq
 // ▼▼▼ 解き直し検索用スプレッドシートのURL ▼▼▼
 const GAS_URL_REDONE = "https://script.google.com/macros/s/AKfycbwXDCSMakZ9lNb23ZFSSZk2fEJjLorzfIM5leiDIg_z3zsgFVn3L_59GSGkiYifElMG/exec"; 
 
-let appData = []; // 語群検索用データ
-let redoneData = []; // 解き直し検索用データ
-let dictStandard = []; // 日本語一般語.txt
-let dictPig = [];      // 豚辞書.txt
-let dictEnglish = [];  // 英語一般語.txt
+let appData = []; 
+let redoneData = []; 
+let dictStandard = []; 
+let dictPig = [];      
+let dictEnglish = [];  
 
 // モード管理
 let currentMode = 'gojuon'; 
@@ -16,9 +16,9 @@ let selectedCells = [];
 let customLayout = [];
 
 window.onload = function() {
-    loadAppData(); // 語群データ
-    loadRedoneData(); // 解き直しデータ
-    loadAllDictionaries(); // テキスト辞書
+    loadData(); 
+    loadRedoneData(); 
+    loadAllDictionaries(); 
     
     if (typeof KANJI_DATA !== 'undefined') {
         searchKanji();
@@ -36,7 +36,6 @@ function switchTab(tabName) {
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
     document.getElementById(`tab-${tabName}`).classList.add('active');
 
-    // モードに応じたリセット処理
     if (tabName === 'gojuon') {
         currentMode = 'gojuon';
         activeLayout = GOJUON_LAYOUT;
@@ -66,7 +65,7 @@ function normalizeString(str) {
 // ------------------------------------
 async function loadRedoneData() {
     const countEl = document.getElementById('redoneCount');
-    if (countEl) countEl.innerText = "解き直しデータ読み込み中...";
+    if (countEl) countEl.innerText = "データ読み込み中...";
     try {
         const response = await fetch(GAS_URL_REDONE);
         if (!response.ok) throw new Error("Network response was not ok");
@@ -120,7 +119,6 @@ function searchRedone() {
                 let idx1 = -1; 
                 let idx2 = -1; 
 
-                // 1. 通常の同じ位置チェック
                 const len = Math.min(w1.length, w2.length);
                 for (let k = 0; k < len; k++) {
                     if (w1[k] === charFrom && w2[k] === charTo) {
@@ -131,7 +129,6 @@ function searchRedone() {
                     }
                 }
 
-                // 2. 最後の文字同士チェック
                 if (!isMatch && matchLastChar) {
                     if (w1.length > 0 && w2.length > 0) {
                         const last1 = w1.length - 1;
@@ -202,7 +199,6 @@ const GOJUON_LAYOUT = [
     ['','を','ろ','よ','も','ほ','の','と','そ','こ','お']
 ];
 
-// 辞書読み込み
 async function loadAllDictionaries() {
     const statusEl = document.getElementById('txtStatus');
     statusEl.innerText = "辞書読み込み中...";
@@ -232,7 +228,6 @@ async function loadAllDictionaries() {
     statusEl.innerText = msg;
 }
 
-// グリッド生成（共通）
 function initGrid(gridId, canvasId, layout) {
     const grid = document.getElementById(gridId);
     if(!grid) return;
@@ -264,7 +259,6 @@ function initGrid(gridId, canvasId, layout) {
     }, 100);
 }
 
-// カスタム表作成
 function createCustomTable() {
     const text = document.getElementById('customInputText').value.replace(/\s/g, '').toUpperCase();
     const cols = parseInt(document.getElementById('customCols').value, 10);
@@ -350,7 +344,6 @@ function drawLines() {
     ctx.stroke();
 }
 
-// 形状検索ロジック
 function searchByShape() {
     const isCustom = (currentMode === 'custom');
     const resultArea = document.getElementById(isCustom ? 'customResultArea' : 'gojuonResultArea');
@@ -473,10 +466,11 @@ function getCoord(char, layout) {
 function searchKanji() {
     const rawInput = document.getElementById('kanjiInput').value.trim();
     const searchInput = rawInput;
-
     const sortOption = document.getElementById('sortOption').value;
-    const checkbox = document.getElementById('useExtendedSearch');
-    const useExtended = checkbox ? checkbox.checked : false;
+    
+    // ★修正: k2, k3 のチェック状態を個別に取得
+    const useK2 = document.getElementById('useK2').checked;
+    const useK3 = document.getElementById('useK3').checked;
     
     const resultArea = document.getElementById('kanjiResultArea');
     const countEl = document.getElementById('kanjiCount');
@@ -494,11 +488,10 @@ function searchKanji() {
         const inputChars = searchInput.split('');
 
         filteredData = KANJI_DATA.filter(item => {
+            // ★修正: チェック状態に応じてキーワードリストを構築
             let keywords = [...(item.k || [])];
-            if (useExtended) {
-                if (item.k2) keywords = keywords.concat(item.k2);
-                if (item.k3) keywords = keywords.concat(item.k3);
-            }
+            if (useK2 && item.k2) keywords = keywords.concat(item.k2);
+            if (useK3 && item.k3) keywords = keywords.concat(item.k3);
 
             return inputChars.every(char => {
                 const matchChar = item.c.includes(char) || item.c.includes(rawInput);
@@ -551,15 +544,22 @@ function openModal(item) {
     };
 
     let similarHtml = '';
-    if (item.k && item.k.length > 0) {
-        const myKeywords = item.k;
+    // 類似検索用に全キーワードを統合
+    let allMyKeywords = [...(item.k || [])];
+    if(item.k2) allMyKeywords = allMyKeywords.concat(item.k2);
+    if(item.k3) allMyKeywords = allMyKeywords.concat(item.k3);
+
+    if (allMyKeywords.length >= 1) { 
         const similarItems = KANJI_DATA.map(otherItem => {
             if (otherItem.c === item.c) return null;
-            if (!otherItem.k || otherItem.k.length === 0) return null;
-            
-            const commonKeywords = otherItem.k.filter(k => myKeywords.includes(k));
+            let otherKeywords = [...(otherItem.k || [])];
+            if(otherItem.k2) otherKeywords = otherKeywords.concat(otherItem.k2);
+            if(otherItem.k3) otherKeywords = otherKeywords.concat(otherItem.k3);
+            if (otherKeywords.length === 0) return null;
+
+            const commonKeywords = otherKeywords.filter(k => allMyKeywords.includes(k));
             const commonCount = commonKeywords.length;
-            const totalKeywords = otherItem.k.length;
+            const totalKeywords = otherKeywords.length;
 
             if (commonCount >= 2) {
                 const ratio = commonCount / totalKeywords;
@@ -600,8 +600,12 @@ function openModal(item) {
 function searchByTag(tag) {
     closeModal();
     document.getElementById('kanjiInput').value = tag;
-    const checkbox = document.getElementById('useExtendedSearch');
-    if (checkbox) checkbox.checked = true;
+    
+    // ★修正: タグ検索時は両方の拡張オプションをONにする（または検索対象として含めるようにJS側で調整）
+    // 今回はチェックボックスをONにする挙動にします
+    if(document.getElementById('useK2')) document.getElementById('useK2').checked = true;
+    if(document.getElementById('useK3')) document.getElementById('useK3').checked = true;
+
     searchKanji();
 }
 
@@ -626,7 +630,7 @@ async function loadData() {
     if (countEl) countEl.innerText = "データ読み込み中...";
 
     try {
-        const response = await fetch(GAS_URL_WORD); // 修正: 専用URLを使用
+        const response = await fetch(GAS_URL_WORD);
         if (!response.ok) throw new Error("Network response was not ok");
         appData = await response.json();
         
@@ -686,12 +690,10 @@ function searchWords() {
         const missingChars = inputChars.filter(originalChar => {
             let targetChar = originalChar.toLowerCase();
             let targetTextToSearch = combinedText.toLowerCase();
-
             if (looseMode) {
                 targetChar = normalizeString(targetChar);
                 targetTextToSearch = normalizeString(targetTextToSearch);
             }
-            
             return !targetTextToSearch.includes(targetChar);
         });
         
