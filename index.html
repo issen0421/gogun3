@@ -16,7 +16,6 @@
         <button class="tab-btn" onclick="switchTab('kanji')">漢字検索</button>
         <button class="tab-btn" onclick="switchTab('gojuon')">五十音表</button>
         <button class="tab-btn" onclick="switchTab('custom')">カスタム表</button>
-        <!-- ★追加 -->
         <button class="tab-btn" onclick="switchTab('redone')">解き直し</button>
     </div>
 
@@ -67,7 +66,7 @@
             選択したマスの「形」と同じ動きをする単語を探します
         </p>
         <div class="gojuon-controls">
-            <button class="btn-reset" onclick="resetSelection()">リセット</button>
+            <button class="btn-reset" onclick="resetGojuon()">リセット</button>
             <div class="gojuon-options">
                 <span class="opt-title">使用する辞書:</span>
                 <label class="checkbox-label"><input type="checkbox" id="useDictStandard" checked onchange="searchByShape()">一般語</label>
@@ -120,18 +119,27 @@
         <div id="customResultArea" class="result-area"></div>
     </div>
 
-    <!-- ▼▼▼ 解き直し検索タブ (新規追加) ▼▼▼ -->
+    <!-- ▼▼▼ 解き直し検索タブ ▼▼▼ -->
     <div id="tab-redone" class="tab-content">
         <p class="description">
-            語群内で「ある文字」が「別の文字」に対応している単語ペアを探します<br>
-            <small>例: 「あ」→「れ」で検索すると、「<span class="highlight">あ</span>か」と「<span class="highlight">れ</span>っど」がヒット</small>
+            語群内で「ある文字」が「別の文字」に対応している単語ペアを探します
         </p>
         
-        <div class="search-box" style="display:flex; justify-content: center; align-items: center; gap:10px;">
-            <input type="text" id="redoneFrom" placeholder="元の文字" style="width:100px; text-align:center;" maxlength="1">
-            <span style="font-size:20px; font-weight:bold;">→</span>
-            <input type="text" id="redoneTo" placeholder="先の文字" style="width:100px; text-align:center;" maxlength="1">
-            <button class="tab-btn active" style="margin-left:10px;" onclick="searchRedone()">検索</button>
+        <div class="search-box">
+            <div style="display:flex; justify-content: center; align-items: center; gap:10px; margin-bottom:10px;">
+                <input type="text" id="redoneFrom" placeholder="元の文字" style="width:100px; text-align:center;" maxlength="1">
+                <span style="font-size:20px; font-weight:bold;">→</span>
+                <input type="text" id="redoneTo" placeholder="先の文字" style="width:100px; text-align:center;" maxlength="1">
+                <button class="tab-btn active" style="margin-left:10px;" onclick="searchRedone()">検索</button>
+            </div>
+
+            <!-- ★追加: 末尾対応チェックボックス -->
+            <div class="options">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="matchLastChar" onchange="searchRedone()">
+                    最後の文字を対応させる（あか・れっど → か/ど）
+                </label>
+            </div>
         </div>
         
         <div id="redoneCount" class="result-count">文字を入力して検索してください</div>
