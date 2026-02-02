@@ -1,20 +1,24 @@
-// ▼▼▼ ここにGASのURLを貼り付けてください ▼▼▼
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq2lxuWtuOMpGWsc_D7MtMn0tgdVjTqE8m_7cbcguahrbkCEtd_Uw/exec"; 
-// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+// ▼▼▼ 語群検索用スプレッドシートのURL ▼▼▼
+const GAS_URL_WORD = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq2lxuWtuOMpGWsc_D7MtMn0tgdVjTqE8m_7cbcguahrbkCEtd_Uw/exec"; 
+// ▼▼▼ 解き直し検索用スプレッドシートのURL（新しいURLを作成したらここに貼る） ▼▼▼
+const GAS_URL_REDONE = "https://script.google.com/macros/s/AKfycbwXDCSMakZ9lNb23ZFSSZk2fEJjLorzfIM5leiDIg_z3zsgFVn3L_59GSGkiYifElMG/exec"; 
+// ※現在は仮で同じURLにしています。必要に応じて書き換えてください。
 
-let appData = []; 
+let appData = []; // 語群検索用データ
+let redoneData = []; // 解き直し検索用データ
 let dictStandard = []; // 日本語一般語.txt
 let dictPig = [];      // 豚辞書.txt
 let dictEnglish = [];  // 英語一般語.txt
 
 // モード管理
-let currentMode = 'gojuon'; // 'gojuon', 'custom', 'redone'
+let currentMode = 'gojuon'; 
 let activeLayout = []; 
 let selectedCells = []; 
 let customLayout = [];
 
 window.onload = function() {
-    loadData(); 
+    loadData(); // 語群検索用
+    loadRedoneData(); // 解き直し検索用
     loadAllDictionaries(); 
     
     if (typeof KANJI_DATA !== 'undefined') {
@@ -61,10 +65,24 @@ function normalizeString(str) {
 // ------------------------------------
 // 解き直し検索機能
 // ------------------------------------
+async function loadRedoneData() {
+    const countEl = document.getElementById('redoneCount');
+    if (countEl) countEl.innerText = "データ読み込み中...";
+    try {
+        const response = await fetch(GAS_URL_REDONE);
+        if (!response.ok) throw new Error("Network response was not ok");
+        redoneData = await response.json();
+        if (countEl) countEl.innerText = `読み込み完了（全${redoneData.length}件）。文字を入力してください。`;
+    } catch (error) {
+        console.error(error);
+        if (countEl) countEl.innerText = "解き直しデータの読み込みに失敗しました。";
+    }
+}
+
 function searchRedone() {
     const charFrom = document.getElementById('redoneFrom').value.trim();
     const charTo = document.getElementById('redoneTo').value.trim();
-    const matchLastChar = document.getElementById('matchLastChar').checked;
+    const matchLastChar = document.getElementById('matchLastChar').checked; 
     
     const resultArea = document.getElementById('redoneResultArea');
     const countEl = document.getElementById('redoneCount');
@@ -76,17 +94,19 @@ function searchRedone() {
         return;
     }
 
-    if (appData.length === 0) {
+    if (redoneData.length === 0) {
         countEl.innerText = "語群データを読み込み中です...";
         return;
     }
 
     let foundPairs = [];
 
-    appData.forEach(group => {
+    // redoneDataを使用
+    redoneData.forEach(group => {
         const words = Array.isArray(group.words) ? group.words : [];
         if (words.length < 2) return;
 
+        // 総当たりでペアチェック
         for (let i = 0; i < words.length; i++) {
             for (let j = 0; j < words.length; j++) {
                 if (i === j) continue;
@@ -98,6 +118,7 @@ function searchRedone() {
                 let idx1 = -1; 
                 let idx2 = -1; 
 
+                // 1. 通常の同じ位置チェック
                 const len = Math.min(w1.length, w2.length);
                 for (let k = 0; k < len; k++) {
                     if (w1[k] === charFrom && w2[k] === charTo) {
@@ -108,6 +129,7 @@ function searchRedone() {
                     }
                 }
 
+                // 2. 最後の文字同士チェック
                 if (!isMatch && matchLastChar) {
                     if (w1.length > 0 && w2.length > 0) {
                         const last1 = w1.length - 1;
@@ -170,7 +192,6 @@ function searchRedone() {
 // ------------------------------------
 // 五十音表検索機能
 // ------------------------------------
-// レイアウト定義 (11列 x 5行, あ行を右端に)
 const GOJUON_LAYOUT = [
     ['ん','わ','ら','や','ま','は','な','た','さ','か','あ'],
     ['','','り','','み','ひ','に','ち','し','き','い'],
@@ -359,7 +380,6 @@ function searchByShape() {
         });
     }
 
-    // パターン生成（回転・反転）
     let patterns = [inputVectors]; 
     if (allowRotation) {
         const rot90 = inputVectors.map(v => ({ dr: v.dc, dc: -v.dr }));
@@ -601,7 +621,7 @@ async function loadData() {
     if (countEl) countEl.innerText = "データ読み込み中...";
 
     try {
-        const response = await fetch(GAS_URL);
+        const response = await fetch(GAS_URL_WORD); // 修正: 専用URLを使用
         if (!response.ok) throw new Error("Network response was not ok");
         appData = await response.json();
         
