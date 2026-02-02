@@ -9,198 +9,56 @@ body {
     flex-direction: column;
     align-items: center;
 }
+.container { max-width: 900px; width: 100%; text-align: center; }
+h1 { color: #2c3e50; margin-bottom: 20px; }
+.description { color: #7f8c8d; margin-bottom: 15px; font-size: 14px; }
 
-.container {
-    max-width: 900px;
-    width: 100%;
-    text-align: center;
-}
-
-h1 {
-    color: #2c3e50;
-    margin-bottom: 20px;
-}
-
-.description {
-    color: #7f8c8d;
-    margin-bottom: 15px;
-    font-size: 14px;
-}
-
-/* タブデザイン */
-.tab-buttons {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 20px;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.tab-btn {
-    padding: 8px 20px;
-    font-size: 14px;
-    border: none;
-    border-radius: 20px;
-    cursor: pointer;
-    background-color: #ddd;
-    color: #555;
-    transition: 0.3s;
-    font-weight: bold;
-}
-
-.tab-btn.active {
-    background-color: #3498db;
-    color: white;
-    box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3);
-}
-
+/* タブ */
+.tab-buttons { display: flex; justify-content: center; margin-bottom: 20px; gap: 10px; flex-wrap: wrap; }
+.tab-btn { padding: 8px 20px; font-size: 14px; border: none; border-radius: 20px; cursor: pointer; background-color: #ddd; color: #555; transition: 0.3s; font-weight: bold; }
+.tab-btn.active { background-color: #3498db; color: white; box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3); }
 .tab-content { display: none; }
 .tab-content.active { display: block; animation: fadeIn 0.5s; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* 検索ボックス */
-.search-box {
-    background: white;
-    padding: 20px;
-    border-radius: 15px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    width: 100%;
-    box-sizing: border-box;
-    margin-bottom: 20px;
-}
-
-input[type="text"] {
-    width: 90%;
-    padding: 12px;
-    font-size: 18px;
-    border: 2px solid #dfe6e9;
-    border-radius: 10px;
-    outline: none;
-    transition: border-color 0.3s;
-}
-
+/* 検索ボックス・共通UI */
+.search-box { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); width: 100%; box-sizing: border-box; margin-bottom: 20px; }
+input[type="text"] { width: 90%; padding: 12px; font-size: 18px; border: 2px solid #dfe6e9; border-radius: 10px; outline: none; transition: border-color 0.3s; }
 input[type="text"]:focus { border-color: #3498db; }
-
-.options, .sort-options, .gojuon-options {
-    margin-top: 15px;
-    display: flex;
-    justify-content: center;
-    gap: 10px;
-    font-size: 14px;
-    color: #555;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.opt-title {
-    font-size: 12px; font-weight: bold; color: #555; margin-right: 5px;
-}
-
-.checkbox-label {
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    user-select: none;
-    margin-right: 10px;
-}
+.options, .sort-options, .gojuon-options { margin-top: 15px; display: flex; justify-content: center; gap: 10px; font-size: 14px; color: #555; align-items: center; flex-wrap: wrap; }
+.opt-title { font-size: 12px; font-weight: bold; color: #555; margin-right: 5px; }
+.checkbox-label { display: flex; align-items: center; cursor: pointer; user-select: none; margin-right: 10px; }
 .checkbox-label input { margin-right: 5px; transform: scale(1.2); }
+select { padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-size: 14px; }
+.result-count { margin-top: 10px; font-size: 13px; color: #95a5a6; }
 
-select {
-    padding: 8px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
-    font-size: 14px;
-}
-
-.result-count {
-    margin-top: 10px;
-    font-size: 13px;
-    color: #95a5a6;
-}
-
-/* 結果エリア */
-.result-area {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 15px;
-    width: 100%;
-    margin-top: 20px;
-}
-
-/* 語群カード */
-.group-card {
-    background: white;
-    border-radius: 12px;
-    padding: 15px;
-    text-align: left;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-    border-top: 4px solid #3498db;
-    position: relative;
-}
-
+/* 結果エリア・カード */
+.result-area { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; width: 100%; margin-top: 20px; }
+.group-card { background: white; border-radius: 12px; padding: 15px; text-align: left; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); border-top: 4px solid #3498db; position: relative; transition: transform 0.2s; }
 .group-card:hover { transform: translateY(-3px); }
 .match-perfect { border-top-color: #27ae60; }
 .match-near { border-top-color: #f39c12; }
+.group-name { display: block; font-size: 12px; color: #3498db; font-weight: bold; margin-bottom: 8px; text-transform: uppercase; }
 .match-perfect .group-name { color: #27ae60; }
 .match-near .group-name { color: #e67e22; }
-
-.group-name {
-    display: block;
-    font-size: 12px;
-    color: #3498db;
-    font-weight: bold;
-    margin-bottom: 8px;
-    text-transform: uppercase;
-}
-
 .word-list { display: flex; flex-wrap: wrap; gap: 6px; }
 .word-item { background: #ebf5fb; color: #2980b9; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
 .highlight { color: #e74c3c; font-weight: 900; text-decoration: underline; }
-
-.badge {
-    position: absolute; top: 10px; right: 10px;
-    font-size: 10px; padding: 2px 6px; border-radius: 4px; color: white; font-weight: bold;
-}
+.badge { position: absolute; top: 10px; right: 10px; font-size: 10px; padding: 2px 6px; border-radius: 4px; color: white; font-weight: bold; }
 .badge-perfect { background: #27ae60; }
 .badge-near { background: #f39c12; }
 .missing-info { font-size: 11px; color: #e67e22; margin-top: 5px; font-style: italic; }
+.no-result { grid-column: 1 / -1; padding: 40px; color: #bdc3c7; font-size: 16px; }
+.loading { grid-column: 1 / -1; color: #3498db; font-weight: bold; padding: 20px; }
 
-/* 漢字グリッド */
-.kanji-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-    gap: 10px;
-}
-
-.kanji-card {
-    background: white;
-    border-radius: 8px;
-    padding: 10px;
-    text-align: center;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-    border-bottom: 3px solid #ddd;
-    transition: transform 0.2s;
-    cursor: pointer;
-}
+/* 漢字グリッド・モーダル */
+.kanji-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }
+.kanji-card { background: white; border-radius: 8px; padding: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-bottom: 3px solid #ddd; transition: transform 0.2s; cursor: pointer; }
 .kanji-card:hover { transform: translateY(-3px); border-bottom-color: #3498db; }
 .kanji-char { font-size: 32px; font-weight: bold; color: #333; display: block; line-height: 1.2; }
 .kanji-info { font-size: 10px; color: #7f8c8d; margin-top: 5px; display: flex; justify-content: space-around; }
-
-/* モーダル */
-.modal {
-    display: none; position: fixed; z-index: 200; left: 0; top: 0;
-    width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); 
-}
-.modal-content {
-    background-color: #fefefe; margin: 5% auto; padding: 30px;
-    border-radius: 15px; width: 80%; max-width: 500px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2); text-align: left;
-    position: relative; animation: zoomIn 0.3s; max-height: 80vh; overflow-y: auto;
-}
+.modal { display: none; position: fixed; z-index: 200; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+.modal-content { background-color: #fefefe; margin: 5% auto; padding: 30px; border-radius: 15px; width: 80%; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); text-align: left; position: relative; animation: zoomIn 0.3s; max-height: 80vh; overflow-y: auto; }
 @keyframes zoomIn { from {transform: scale(0.8); opacity: 0;} to {transform: scale(1); opacity: 1;} }
 .close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; position: absolute; top: 10px; right: 20px; }
 .close-btn:hover { color: black; }
@@ -215,8 +73,6 @@ select {
 .k3-tag { background: #e8f5e9; color: #1b5e20; padding: 4px 10px; border-radius: 15px; font-size: 14px; }
 .clickable-tag { cursor: pointer; transition: 0.2s; border: 1px solid transparent; }
 .clickable-tag:hover { transform: scale(1.05); box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-color: rgba(0,0,0,0.1); }
-
-/* 似ている漢字リスト */
 .similar-section { margin-top: 20px; padding-top: 15px; border-top: 2px dashed #eee; }
 .similar-title { font-size: 14px; font-weight: bold; color: #e67e22; margin-bottom: 10px; display: block; }
 .similar-list { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -225,77 +81,20 @@ select {
 .similar-char { font-size: 20px; font-weight: bold; color: #d35400; }
 .similar-info { font-size: 10px; color: #888; display: block; margin-top: 2px; }
 
-.no-result { grid-column: 1 / -1; padding: 40px; color: #bdc3c7; font-size: 16px; }
-.loading { grid-column: 1 / -1; color: #3498db; font-weight: bold; padding: 20px; }
-
-/* ▼▼▼ 五十音表・カスタム表用のスタイル ▼▼▼ */
-.gojuon-wrapper {
-    position: relative;
-    display: inline-block;
-    margin: 20px auto;
-    user-select: none;
-}
-
-.gojuon-grid {
-    display: grid;
-    /* デフォルトの五十音レイアウト用（JSで上書き可能） */
-    grid-template-columns: repeat(11, 40px);
-    gap: 4px;
-    background-color: #eee;
-    padding: 10px;
-    border-radius: 10px;
-}
-
-.cell {
-    width: 40px; height: 40px;
-    background-color: white;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px; font-weight: bold;
-    border-radius: 5px; cursor: pointer;
-    transition: 0.1s;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
+/* ▼▼▼ 五十音・カスタム表スタイル ▼▼▼ */
+.gojuon-wrapper { position: relative; display: inline-block; margin: 20px auto; user-select: none; }
+.gojuon-grid { display: grid; gap: 4px; background-color: #eee; padding: 10px; border-radius: 10px; }
+.cell { width: 40px; height: 40px; background-color: white; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: 0.1s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 .cell:hover { background-color: #f0f8ff; }
 .cell.selected { background-color: #3498db; color: white; transform: scale(0.95); }
 .cell.empty { background-color: transparent; box-shadow: none; cursor: default; }
-
-canvas {
-    position: absolute; top: 0; left: 0; pointer-events: none; z-index: 10;
-}
-
-.gojuon-controls {
-    margin-bottom: 10px; display: flex; flex-direction: column; align-items: center; gap: 10px;
-    width: 100%; max-width: 600px; margin: 0 auto 10px;
-}
-.btn-reset {
-    background: #e74c3c; color: white; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer;
-}
+canvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 10; }
+.gojuon-controls { margin-bottom: 10px; display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; max-width: 600px; margin: 0 auto 10px; }
+.btn-reset { background: #e74c3c; color: white; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; }
 .select-display { font-weight: bold; color: #3498db; }
 
 /* カスタム表作成エリア */
-.custom-maker {
-    background: white;
-    padding: 15px;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-    width: 90%;
-    max-width: 600px;
-    margin: 0 auto 20px;
-}
-#customInputText {
-    width: 100%;
-    height: 60px;
-    padding: 10px;
-    box-sizing: border-box;
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    margin-bottom: 10px;
-}
-.custom-settings {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.btn-create {
-    background: #27ae60; color: white; border: none; padding: 8px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;
-}
+.custom-maker { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); width: 90%; max-width: 600px; margin: 0 auto 20px; }
+#customInputText { width: 100%; height: 60px; padding: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 10px; font-family: inherit; }
+.custom-settings { display: flex; justify-content: space-between; align-items: center; }
+.btn-create { background: #27ae60; color: white; border: none; padding: 8px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
