@@ -1,14 +1,14 @@
 // ▼▼▼ 語群検索用スプレッドシートのURL ▼▼▼
 const GAS_URL_WORD = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq2lxuWtuOMpGWsc_D7MtMn0tgdVjTqE8m_7cbcguahrbkCEtd_Uw/exec"; 
 // ▼▼▼ 解き直し検索用スプレッドシートのURL（新しいURLを作成したらここに貼る） ▼▼▼
-const GAS_URL_REDONE = "https://script.google.com/macros/s/AKfycbwXDCSMakZ9lNb23ZFSSZk2fEJjLorzfIM5leiDIg_z3zsgFVn3L_59GSGkiYifElMG/exec"; 
+const GAS_URL_REDONE = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq2lxuWtuOMpGWsc_D7MtMn0tgdVjTqE8m_7cbcguahrbkCEtd_Uw/exec"; 
 // ※現在は仮で同じURLにしています。必要に応じて書き換えてください。
 
-let appData = []; // 語群検索用データ
-let redoneData = []; // 解き直し検索用データ
-let dictStandard = []; // 日本語一般語.txt
-let dictPig = [];      // 豚辞書.txt
-let dictEnglish = [];  // 英語一般語.txt
+let appData = []; 
+let redoneData = []; 
+let dictStandard = []; 
+let dictPig = [];      
+let dictEnglish = [];  
 
 // モード管理
 let currentMode = 'gojuon'; 
@@ -17,8 +17,8 @@ let selectedCells = [];
 let customLayout = [];
 
 window.onload = function() {
-    loadData(); // 語群検索用
-    loadRedoneData(); // 解き直し検索用
+    loadData(); 
+    loadRedoneData(); 
     loadAllDictionaries(); 
     
     if (typeof KANJI_DATA !== 'undefined') {
@@ -37,7 +37,6 @@ function switchTab(tabName) {
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
     document.getElementById(`tab-${tabName}`).classList.add('active');
 
-    // モードに応じたリセット処理
     if (tabName === 'gojuon') {
         currentMode = 'gojuon';
         activeLayout = GOJUON_LAYOUT;
@@ -83,6 +82,7 @@ function searchRedone() {
     const charFrom = document.getElementById('redoneFrom').value.trim();
     const charTo = document.getElementById('redoneTo').value.trim();
     const matchLastChar = document.getElementById('matchLastChar').checked; 
+    const matchSameLength = document.getElementById('matchSameLength').checked; // ★追加
     
     const resultArea = document.getElementById('redoneResultArea');
     const countEl = document.getElementById('redoneCount');
@@ -113,6 +113,11 @@ function searchRedone() {
 
                 const w1 = words[i];
                 const w2 = words[j];
+
+                // ★追加: 文字数一致チェック
+                if (matchSameLength && w1.length !== w2.length) {
+                    continue;
+                }
 
                 let isMatch = false;
                 let idx1 = -1; 
@@ -471,6 +476,7 @@ function getCoord(char, layout) {
 function searchKanji() {
     const rawInput = document.getElementById('kanjiInput').value.trim();
     const searchInput = rawInput;
+
     const sortOption = document.getElementById('sortOption').value;
     const checkbox = document.getElementById('useExtendedSearch');
     const useExtended = checkbox ? checkbox.checked : false;
@@ -597,6 +603,8 @@ function openModal(item) {
 function searchByTag(tag) {
     closeModal();
     document.getElementById('kanjiInput').value = tag;
+    const checkbox = document.getElementById('useExtendedSearch');
+    if (checkbox) checkbox.checked = true;
     searchKanji();
 }
 
