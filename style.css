@@ -33,10 +33,11 @@ h1 {
     justify-content: center;
     margin-bottom: 20px;
     gap: 10px;
+    flex-wrap: wrap;
 }
 
 .tab-btn {
-    padding: 10px 20px;
+    padding: 8px 20px;
     font-size: 14px;
     border: none;
     border-radius: 20px;
@@ -88,11 +89,15 @@ input[type="text"]:focus { border-color: #3498db; }
     margin-top: 15px;
     display: flex;
     justify-content: center;
-    gap: 15px;
+    gap: 10px;
     font-size: 14px;
     color: #555;
     align-items: center;
     flex-wrap: wrap;
+}
+
+.opt-title {
+    font-size: 12px; font-weight: bold; color: #555; margin-right: 5px;
 }
 
 .checkbox-label {
@@ -100,8 +105,9 @@ input[type="text"]:focus { border-color: #3498db; }
     align-items: center;
     cursor: pointer;
     user-select: none;
+    margin-right: 10px;
 }
-.checkbox-label input { margin-right: 8px; transform: scale(1.2); }
+.checkbox-label input { margin-right: 5px; transform: scale(1.2); }
 
 select {
     padding: 8px;
@@ -222,23 +228,24 @@ select {
 .no-result { grid-column: 1 / -1; padding: 40px; color: #bdc3c7; font-size: 16px; }
 .loading { grid-column: 1 / -1; color: #3498db; font-weight: bold; padding: 20px; }
 
-/* ▼▼▼ 五十音表用のスタイル ▼▼▼ */
+/* ▼▼▼ 五十音表・カスタム表用のスタイル ▼▼▼ */
 .gojuon-wrapper {
     position: relative;
     display: inline-block;
     margin: 20px auto;
     user-select: none;
 }
+
 .gojuon-grid {
     display: grid;
-    /* 横向き: 11列 x 5行 (ん〜あ) */
+    /* デフォルトの五十音レイアウト用（JSで上書き可能） */
     grid-template-columns: repeat(11, 40px);
-    grid-template-rows: repeat(5, 40px);
     gap: 4px;
     background-color: #eee;
     padding: 10px;
     border-radius: 10px;
 }
+
 .cell {
     width: 40px; height: 40px;
     background-color: white;
@@ -252,14 +259,43 @@ select {
 .cell.selected { background-color: #3498db; color: white; transform: scale(0.95); }
 .cell.empty { background-color: transparent; box-shadow: none; cursor: default; }
 
-#lineCanvas {
+canvas {
     position: absolute; top: 0; left: 0; pointer-events: none; z-index: 10;
 }
+
 .gojuon-controls {
     margin-bottom: 10px; display: flex; flex-direction: column; align-items: center; gap: 10px;
-    width: 100%; max-width: 500px; margin: 0 auto 10px;
+    width: 100%; max-width: 600px; margin: 0 auto 10px;
 }
 .btn-reset {
     background: #e74c3c; color: white; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer;
 }
-#gojuonSelectDisplay { font-weight: bold; color: #3498db; }
+.select-display { font-weight: bold; color: #3498db; }
+
+/* カスタム表作成エリア */
+.custom-maker {
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    width: 90%;
+    max-width: 600px;
+    margin: 0 auto 20px;
+}
+#customInputText {
+    width: 100%;
+    height: 60px;
+    padding: 10px;
+    box-sizing: border-box;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    margin-bottom: 10px;
+}
+.custom-settings {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.btn-create {
+    background: #27ae60; color: white; border: none; padding: 8px 20px; border-radius: 5px; cursor: pointer; font-weight: bold;
+}
