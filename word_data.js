@@ -1,0 +1,195 @@
+// GAS URL
+const GAS_URL_WORD = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq2lxuWtuOMpGWsc_D7MtMn0tgdVjTqE8m_7cbcguahrbkCEtd_Uw/exec"; 
+const GAS_URL_REDONE = "https://script.google.com/macros/s/AKfycbwXDCSMakZ9lNb23ZFSSZk2fEJjLorzfIM5leiDIg_z3zsgFVn3L_59GSGkiYifElMG/exec"; 
+
+// 共有データ変数
+let appData = [];        // 語群検索用
+let redoneData = [];     // 解き直し検索用
+let dictStandard = [];   // 日本語一般語.txt
+let dictPig = [];        // 豚辞書.txt
+let dictEnglish = [];    // 英語一般語.txt
+
+// 初期化処理
+window.onload = function() {
+    loadData();             // 語群
+    loadRedoneData();       // 解き直し
+    loadAllDictionaries();  // テキスト辞書
+    
+    // 漢字データがあれば初期検索
+    if (typeof KANJI_DATA !== 'undefined') {
+        expandKanjiKeywords();
+        searchKanji();
+    }
+    
+    // 五十音表の初期化（search_gojuon.jsの関数）
+    if(typeof initGojuuonTable === 'function') {
+        initGojuuonTable();
+    }
+};
+
+// タブ切り替え関数
+function switchTab(tabName) {
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`.tab-btn[onclick="switchTab('${tabName}')"]`).classList.add('active');
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    document.getElementById(`tab-${tabName}`).classList.add('active');
+
+    // モードに応じたリセット処理
+    if (tabName === 'gojuon') {
+        if(typeof resetGojuon === 'function') resetGojuon();
+    } else if (tabName === 'custom') {
+        if(typeof resetCustom === 'function') resetCustom();
+    } 
+}
+
+// ユーティリティ: ひらがな→カタカナ
+function hiraToKata(str) {
+    return str.replace(/[\u3041-\u3096]/g, m => String.fromCharCode(m.charCodeAt(0) + 0x60));
+}
+
+// ユーティリティ: 正規化（濁点除去・大文字化）
+function normalizeString(str) {
+    let res = str.normalize('NFD').replace(/[\u3099\u309A]/g, "");
+    res = res.toUpperCase();
+    const smallToLarge = { 'っ':'つ', 'ゃ':'や', 'ゅ':'ゆ', 'ょ':'よ', 'ぁ':'あ', 'ぃ':'い', 'ぅ':'う', 'ぇ':'え', 'ぉ':'お' };
+    return res.split('').map(char => smallToLarge[char] || char).join('');
+}
+
+// 共通描画ロジック: 線を描く
+function drawLinesCommon(canvasId, gridId, selectedCells) {
+    const canvas = document.getElementById(canvasId);
+    const grid = document.getElementById(gridId);
+    if (!canvas || !grid) return;
+
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (selectedCells.length < 2) return;
+
+    ctx.beginPath();
+    ctx.strokeStyle = "rgba(231, 76, 60, 0.7)";
+    ctx.lineWidth = 4;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+
+    selectedCells.forEach((cell, index) => {
+        const targetDiv = grid.querySelector(`div[data-r="${cell.r}"][data-c="${cell.c}"]`);
+        if (targetDiv) {
+            const rect = targetDiv.getBoundingClientRect();
+            const gridRect = grid.getBoundingClientRect();
+            const x = rect.left - gridRect.left + rect.width / 2;
+            const y = rect.top - gridRect.top + rect.height / 2;
+
+            if (index === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        }
+    });
+    ctx.stroke();
+}
+
+// 共通検索ロジック: 形状検索
+function searchByShapeCommon(selectedCells, targetWords, activeLayout, resultAreaId) {
+    const resultArea = document.getElementById(resultAreaId);
+    resultArea.innerHTML = "";
+    
+    if (selectedCells.length < 2) return;
+    if (targetWords.length === 0) return;
+
+    // オプションの取得（IDのsuffixで判定）
+    const isCustom = (resultAreaId === 'customResultArea');
+    const suffix = isCustom ? '_custom' : '';
+    const allowRotation = document.getElementById('allowRotation' + suffix).checked;
+    const allowReflection = document.getElementById('allowReflection' + suffix).checked;
+
+    // 入力ベクトル
+    const inputVectors = [];
+    for(let i=0; i<selectedCells.length-1; i++) {
+        inputVectors.push({
+            dr: selectedCells[i+1].r - selectedCells[i].r,
+            dc: selectedCells[i+1].c - selectedCells[i].c
+        });
+    }
+
+    // パターン生成
+    let patterns = [inputVectors];
+    if (allowRotation) {
+        const rot90 = inputVectors.map(v => ({ dr: v.dc, dc: -v.dr }));
+        const rot180 = inputVectors.map(v => ({ dr: -v.dr, dc: -v.dc }));
+        const rot270 = inputVectors.map(v => ({ dr: -v.dc, dc: v.dr }));
+        patterns.push(rot90, rot180, rot270);
+    }
+    if (allowReflection) {
+        const currentPatterns = [...patterns];
+        currentPatterns.forEach(pat => {
+            const reflected = pat.map(v => ({ dr: v.dr, dc: -v.dc }));
+            patterns.push(reflected);
+        });
+    }
+
+    const matchedWords = [];
+
+    targetWords.forEach(word => {
+        if (word.length !== selectedCells.length) return;
+
+        const coords = [];
+        let isValid = true;
+        for (let char of word) {
+            const normalized = normalizeString(char);
+            const coord = getCoordCommon(normalized, activeLayout);
+            if (!coord) {
+                isValid = false;
+                break;
+            }
+            coords.push(coord);
+        }
+        if (!isValid) return;
+
+        const wordVectors = [];
+        for(let i=0; i<coords.length-1; i++) {
+            wordVectors.push({
+                dr: coords[i+1].r - coords[i].r,
+                dc: coords[i+1].c - coords[i].c
+            });
+        }
+
+        // ベクトル比較
+        for(let pat of patterns) {
+            let isMatch = true;
+            for(let i=0; i<pat.length; i++) {
+                if (pat[i].dr !== wordVectors[i].dr || pat[i].dc !== wordVectors[i].dc) {
+                    isMatch = false;
+                    break;
+                }
+            }
+            if (isMatch) {
+                matchedWords.push(word);
+                break;
+            }
+        }
+    });
+
+    const uniqueMatches = [...new Set(matchedWords)];
+    uniqueMatches.sort((a, b) => a.localeCompare(b, 'ja'));
+
+    if (uniqueMatches.length === 0) {
+        resultArea.innerHTML = `<div class="no-result">見つかりませんでした</div>`;
+        return;
+    }
+
+    const card = document.createElement('div');
+    card.className = 'group-card match-perfect';
+    const wordsHtml = uniqueMatches.map(w => `<span class="word-item">${w}</span>`).join("");
+    card.innerHTML = `
+        <span class="group-name">同じ形の単語 (${uniqueMatches.length}件)</span>
+        <div class="word-list">${wordsHtml}</div>
+    `;
+    resultArea.appendChild(card);
+}
+
+function getCoordCommon(char, layout) {
+    for(let r=0; r<layout.length; r++) {
+        for(let c=0; c<layout[r].length; c++) {
+            if (layout[r][c] === char) return {r, c};
+        }
+    }
+    return null;
+}
