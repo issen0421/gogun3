@@ -63,13 +63,14 @@
     <!-- ▼▼▼ 五十音表検索タブ ▼▼▼ -->
     <div id="tab-gojuon" class="tab-content">
         <p class="description">
-            選択したマスの「形」と同じ動きをする単語を探します
+            選択したマスの「形」と同じ動きをする単語を探します<br>
         </p>
         
         <div class="gojuon-controls">
-            <button class="btn-reset" onclick="resetGojuon()">リセット</button>
+            <!-- ★修正箇所: resetGojuon -> resetSelection に変更 -->
+            <button class="btn-reset" onclick="resetSelection()">リセット</button>
             
-            <!-- 辞書選択 (英語なし) -->
+            <!-- 辞書選択 -->
             <div class="gojuon-options" style="border-bottom:1px dashed #ccc; padding-bottom:10px; margin-bottom:10px;">
                 <span class="opt-title">使用する辞書:</span>
                 <label class="checkbox-label">
@@ -94,7 +95,6 @@
 
         <div class="gojuon-wrapper">
             <canvas id="lineCanvasGojuon"></canvas>
-            <!-- グリッドのスタイルはJSで制御されます -->
             <div id="gojuonGrid" class="gojuon-grid"></div>
         </div>
 
@@ -102,7 +102,7 @@
         <div id="gojuonResultArea" class="result-area"></div>
     </div>
 
-    <!-- ▼▼▼ カスタム表検索タブ ▼▼▼ -->
+    <!-- カスタム表検索タブ -->
     <div id="tab-custom" class="tab-content">
         <p class="description">自由に文字を配置して検索できます</p>
         <div class="custom-maker">
@@ -116,19 +116,19 @@
         <div class="gojuon-controls">
             <button class="btn-reset" onclick="resetSelection()">リセット</button>
             
-            <!-- 辞書選択 (英語あり) -->
-            <div class="gojuon-options" style="border-bottom:1px dashed #ccc; padding-bottom:10px; margin-bottom:10px;">
+            <div class="gojuon-options">
                 <span class="opt-title">辞書:</span>
                 <label class="checkbox-label"><input type="checkbox" id="useDictStandard_custom" checked onchange="searchByShape()">一般語</label>
                 <label class="checkbox-label"><input type="checkbox" id="useDictPig_custom" onchange="searchByShape()">豚辞書</label>
                 <label class="checkbox-label"><input type="checkbox" id="useDictEnglish_custom" checked onchange="searchByShape()">英語</label>
             </div>
-            
+
             <div class="gojuon-options">
                 <span class="opt-title">形状:</span>
                 <label class="checkbox-label"><input type="checkbox" id="allowRotation_custom" onchange="searchByShape()">回転OK</label>
                 <label class="checkbox-label"><input type="checkbox" id="allowReflection_custom" onchange="searchByShape()">反転OK</label>
             </div>
+            
             <div id="customSelectDisplay" class="select-display">選択: なし</div>
         </div>
 
@@ -136,6 +136,7 @@
             <canvas id="lineCanvasCustom"></canvas>
             <div id="customGrid" class="gojuon-grid custom-grid-style"></div>
         </div>
+
         <div id="customResultArea" class="result-area"></div>
     </div>
 
@@ -144,11 +145,12 @@
         <p class="description">
             語群内で「ある文字」が「別の文字」に対応している単語ペアを探します
         </p>
+        
         <div class="search-box">
             <div style="display:flex; justify-content: center; align-items: center; gap:10px; margin-bottom:10px;">
-                <input type="text" id="redoneFrom" placeholder="変換前" style="width:80px; text-align:center;" maxlength="1">
+                <input type="text" id="redoneFrom" placeholder="元" style="width:80px; text-align:center;" maxlength="1">
                 <span style="font-size:20px; font-weight:bold;">→</span>
-                <input type="text" id="redoneTo" placeholder="変換後" style="width:80px; text-align:center;" maxlength="1">
+                <input type="text" id="redoneTo" placeholder="先" style="width:80px; text-align:center;" maxlength="1">
                 <button class="tab-btn active" style="margin-left:10px;" onclick="searchRedone()">検索</button>
             </div>
             <div class="options">
@@ -158,6 +160,7 @@
                 </label>
             </div>
         </div>
+        
         <div id="redoneCount" class="result-count">文字を入力して検索してください</div>
         <div id="redoneResultArea" class="result-area"></div>
     </div>
