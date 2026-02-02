@@ -61,36 +61,22 @@
 
     <!-- ▼▼▼ 五十音表検索タブ ▼▼▼ -->
     <div id="tab-gojuon" class="tab-content">
-        <p class="description">
-            選択したマスの「形」と同じ動きをする単語を探します
-        </p>
+        <p class="description">選択したマスの「形」と同じ動きをする単語を探します</p>
         
-        <!-- コントロールエリア（五十音・カスタム共通のスタイルを使用） -->
         <div class="gojuon-controls">
             <button class="btn-reset" onclick="resetSelection()">リセット</button>
             
             <div class="gojuon-options">
-                <span class="opt-title">使用する辞書:</span>
-                <label class="checkbox-label">
-                    <input type="checkbox" id="useDictStandard" checked onchange="searchByShape()">
-                    一般語
-                </label>
-                <label class="checkbox-label">
-                    <input type="checkbox" id="useDictPig" onchange="searchByShape()">
-                    豚辞書
-                </label>
+                <span class="opt-title">辞書:</span>
+                <label class="checkbox-label"><input type="checkbox" id="useDictStandard" checked onchange="searchByShape()">一般語</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictPig" onchange="searchByShape()">豚辞書</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictEnglish" onchange="searchByShape()">英語</label>
             </div>
 
             <div class="gojuon-options">
-                <span class="opt-title">形状オプション:</span>
-                <label class="checkbox-label">
-                    <input type="checkbox" id="allowRotation" onchange="searchByShape()">
-                    回転OK
-                </label>
-                <label class="checkbox-label">
-                    <input type="checkbox" id="allowReflection" onchange="searchByShape()">
-                    反転OK
-                </label>
+                <span class="opt-title">形状:</span>
+                <label class="checkbox-label"><input type="checkbox" id="allowRotation" onchange="searchByShape()">回転OK</label>
+                <label class="checkbox-label"><input type="checkbox" id="allowReflection" onchange="searchByShape()">反転OK</label>
             </div>
             
             <div id="gojuonSelectDisplay" class="select-display">選択: なし</div>
@@ -105,15 +91,12 @@
         <div id="gojuonResultArea" class="result-area"></div>
     </div>
 
-    <!-- ▼▼▼ カスタム表検索タブ (新規追加) ▼▼▼ -->
+    <!-- ▼▼▼ カスタム表検索タブ (新規) ▼▼▼ -->
     <div id="tab-custom" class="tab-content">
-        <p class="description">
-            自由に文字を配置して検索できます
-        </p>
+        <p class="description">自由に文字を配置して検索できます</p>
 
-        <!-- カスタム表作成エリア -->
         <div class="custom-maker">
-            <textarea id="customInputText" placeholder="ここに文字を入力してください（例：あいうえおかきくけこ...）"></textarea>
+            <textarea id="customInputText" placeholder="ここに文字を入力（例：あいうえおか... ABCDE...）"></textarea>
             <div class="custom-settings">
                 <label>列数: <input type="number" id="customCols" value="5" min="1" max="20"></label>
                 <button class="btn-create" onclick="createCustomTable()">表を作成</button>
@@ -123,13 +106,18 @@
         <div class="gojuon-controls">
             <button class="btn-reset" onclick="resetSelection()">リセット</button>
             
-            <!-- オプションは共通IDを使わず、クラスで管理するか、ここでは連動させるために同じIDの別要素を置かない工夫が必要。
-                 今回はシンプルに、五十音表タブのオプション設定を共用（参照）する形にします。
-                 ※画面上に見えているオプションUIを複製する場合はIDを変える必要がありますが、
-                 今回は簡略化のため「五十音タブの設定」がそのまま適用される仕様とします。
-                 （必要であればカスタムタブにも独自IDでオプションを追加し、JSで分岐させます）
-            -->
-            <p style="font-size:12px; color:#666;">※辞書や回転設定は「五十音表」タブの設定が適用されます</p>
+            <div class="gojuon-options">
+                <span class="opt-title">辞書:</span>
+                <label class="checkbox-label"><input type="checkbox" id="useDictStandard_custom" checked onchange="searchByShape()">一般語</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictPig_custom" onchange="searchByShape()">豚辞書</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictEnglish_custom" checked onchange="searchByShape()">英語</label>
+            </div>
+
+            <div class="gojuon-options">
+                <span class="opt-title">形状:</span>
+                <label class="checkbox-label"><input type="checkbox" id="allowRotation_custom" onchange="searchByShape()">回転OK</label>
+                <label class="checkbox-label"><input type="checkbox" id="allowReflection_custom" onchange="searchByShape()">反転OK</label>
+            </div>
             
             <div id="customSelectDisplay" class="select-display">選択: なし</div>
         </div>
