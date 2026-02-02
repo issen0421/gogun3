@@ -19,7 +19,7 @@
         <button class="tab-btn" onclick="switchTab('redone')">解き直し</button>
     </div>
 
-    <!-- 語群検索タブ -->
+    <!-- 1. 語群検索タブ -->
     <div id="tab-word" class="tab-content active">
         <p class="description">スプレッドシート(語群用)連動版</p>
         <div class="search-box">
@@ -35,16 +35,15 @@
         <div id="resultArea" class="result-area"></div>
     </div>
 
-    <!-- 漢字検索タブ -->
+    <!-- 2. 漢字検索タブ -->
     <div id="tab-kanji" class="tab-content">
         <p class="description">小学校で習う漢字（1026字）の検索</p>
         <div class="search-box">
             <input type="text" id="kanjiInput" placeholder="部首や漢字を入力（例：言、心）" oninput="searchKanji()">
             <div class="options">
-                <label class="checkbox-label">
-                    <input type="checkbox" id="useExtendedSearch" onchange="searchKanji()">
-                    拡張キーワードも含める
-                </label>
+                <span style="font-size:12px; font-weight:bold; color:#555; margin-right:5px;">検索対象:</span>
+                <label class="checkbox-label"><input type="checkbox" id="useK2" onchange="searchKanji()">拡張(k2)</label>
+                <label class="checkbox-label"><input type="checkbox" id="useK3" onchange="searchKanji()">拡張(k3)</label>
             </div>
             <div class="sort-options">
                 <span>並び替え:</span>
@@ -60,32 +59,20 @@
         <div id="kanjiResultArea" class="result-area kanji-grid"></div>
     </div>
 
-    <!-- ▼▼▼ 五十音表検索タブ ▼▼▼ -->
+    <!-- 3. 五十音表検索タブ -->
     <div id="tab-gojuon" class="tab-content">
-        <p class="description">
-            選択したマスの「形」と同じ動きをする単語を探します
-        </p>
+        <p class="description">選択したマスの「形」と同じ動きをする単語を探します</p>
         <div class="gojuon-controls">
-            <button class="btn-reset" onclick="resetSelection()">リセット</button>
-            
-            <!-- 辞書選択 -->
-            <div class="gojuon-options" style="border-bottom:1px dashed #ccc; padding-bottom:10px; margin-bottom:10px;">
+            <button class="btn-reset" onclick="resetGojuon()">リセット</button>
+            <div class="gojuon-options">
                 <span class="opt-title">使用する辞書:</span>
-                <label class="checkbox-label">
-                    <input type="checkbox" id="useDictStandard" checked onchange="searchByShape()">
-                    日本語一般語
-                </label>
-                <label class="checkbox-label">
-                    <input type="checkbox" id="useDictPig" onchange="searchByShape()">
-                    豚辞書
-                </label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictStandard" checked onchange="searchGojuon()">一般語</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictPig" onchange="searchGojuon()">豚辞書</label>
             </div>
-
-            <!-- 形状オプション -->
             <div class="gojuon-options">
                 <span class="opt-title">形状オプション:</span>
-                <label class="checkbox-label"><input type="checkbox" id="allowRotation" onchange="searchByShape()">回転OK</label>
-                <label class="checkbox-label"><input type="checkbox" id="allowReflection" onchange="searchByShape()">反転OK</label>
+                <label class="checkbox-label"><input type="checkbox" id="allowRotation" onchange="searchGojuon()">回転OK</label>
+                <label class="checkbox-label"><input type="checkbox" id="allowReflection" onchange="searchGojuon()">反転OK</label>
             </div>
             <div id="gojuonSelectDisplay" class="select-display">選択: なし</div>
         </div>
@@ -97,7 +84,7 @@
         <div id="gojuonResultArea" class="result-area"></div>
     </div>
 
-    <!-- カスタム表検索タブ -->
+    <!-- 4. カスタム表検索タブ -->
     <div id="tab-custom" class="tab-content">
         <p class="description">自由に文字を配置して検索できます</p>
         <div class="custom-maker">
@@ -108,19 +95,17 @@
             </div>
         </div>
         <div class="gojuon-controls">
-            <button class="btn-reset" onclick="resetSelection()">リセット</button>
-            
+            <button class="btn-reset" onclick="resetCustom()">リセット</button>
             <div class="gojuon-options">
                 <span class="opt-title">辞書:</span>
-                <label class="checkbox-label"><input type="checkbox" id="useDictStandard_custom" checked onchange="searchByShape()">一般語</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictPig_custom" onchange="searchByShape()">豚辞書</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictEnglish_custom" checked onchange="searchByShape()">英語</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictStandard_custom" checked onchange="searchCustom()">一般語</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictPig_custom" onchange="searchCustom()">豚辞書</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictEnglish_custom" checked onchange="searchCustom()">英語</label>
             </div>
-            
             <div class="gojuon-options">
                 <span class="opt-title">形状:</span>
-                <label class="checkbox-label"><input type="checkbox" id="allowRotation_custom" onchange="searchByShape()">回転OK</label>
-                <label class="checkbox-label"><input type="checkbox" id="allowReflection_custom" onchange="searchByShape()">反転OK</label>
+                <label class="checkbox-label"><input type="checkbox" id="allowRotation_custom" onchange="searchCustom()">回転OK</label>
+                <label class="checkbox-label"><input type="checkbox" id="allowReflection_custom" onchange="searchCustom()">反転OK</label>
             </div>
             <div id="customSelectDisplay" class="select-display">選択: なし</div>
         </div>
@@ -131,11 +116,9 @@
         <div id="customResultArea" class="result-area"></div>
     </div>
 
-    <!-- 解き直し検索タブ -->
+    <!-- 5. 解き直し検索タブ -->
     <div id="tab-redone" class="tab-content">
-        <p class="description">
-            スプレッドシート(解き直し用)内の単語ペアから文字変換を探します
-        </p>
+        <p class="description">語群内の単語ペアから文字変換を探します</p>
         <div class="search-box">
             <div style="display:flex; justify-content: center; align-items: center; gap:10px; margin-bottom:10px;">
                 <input type="text" id="redoneFrom" placeholder="変換前" style="width:80px; text-align:center;" maxlength="1">
@@ -146,7 +129,7 @@
             <div class="options">
                 <label class="checkbox-label">
                     <input type="checkbox" id="matchLastChar" onchange="searchRedone()">
-                    最後の文字を対応させる（例: あか・れっど → か/ど）
+                    最後の文字を対応させる
                 </label>
                 <label class="checkbox-label">
                     <input type="checkbox" id="matchSameLength" onchange="searchRedone()">
@@ -157,7 +140,6 @@
         <div id="redoneCount" class="result-count">データを読み込み中...</div>
         <div id="redoneResultArea" class="result-area"></div>
     </div>
-
 </div>
 
 <!-- 詳細表示モーダル -->
@@ -168,8 +150,14 @@
     </div>
 </div>
 
+<!-- JSファイル群読み込み -->
 <script src="kanji_data.js"></script>
-<script src="script.js"></script>
+<script src="word_data.js"></script>
+<script src="search_word.js"></script>
+<script src="search_kanji.js"></script>
+<script src="search_gojuon.js"></script>
+<script src="search_custom.js"></script>
+<script src="search_redone.js"></script>
 
 </body>
 </html>
