@@ -15,6 +15,7 @@
         <button class="tab-btn active" onclick="switchTab('word')">語群検索</button>
         <button class="tab-btn" onclick="switchTab('kanji')">漢字検索</button>
         <button class="tab-btn" onclick="switchTab('gojuon')">五十音表</button>
+        <button class="tab-btn" onclick="switchTab('custom')">カスタム表</button>
     </div>
 
     <!-- 語群検索タブ -->
@@ -61,18 +62,18 @@
     <!-- ▼▼▼ 五十音表検索タブ ▼▼▼ -->
     <div id="tab-gojuon" class="tab-content">
         <p class="description">
-            選択したマスの「形」と同じ動きをする単語を探します<br>
+            選択したマスの「形」と同じ動きをする単語を探します
         </p>
         
+        <!-- コントロールエリア（五十音・カスタム共通のスタイルを使用） -->
         <div class="gojuon-controls">
-            <button class="btn-reset" onclick="resetGojuon()">リセット</button>
+            <button class="btn-reset" onclick="resetSelection()">リセット</button>
             
-            <!-- 辞書選択 -->
-            <div class="gojuon-options" style="border-bottom:1px dashed #ccc; padding-bottom:10px; margin-bottom:10px;">
-                <span style="font-size:12px; font-weight:bold; color:#555; display:block; width:100%;">使用する辞書:</span>
+            <div class="gojuon-options">
+                <span class="opt-title">使用する辞書:</span>
                 <label class="checkbox-label">
                     <input type="checkbox" id="useDictStandard" checked onchange="searchByShape()">
-                    日本語一般語
+                    一般語
                 </label>
                 <label class="checkbox-label">
                     <input type="checkbox" id="useDictPig" onchange="searchByShape()">
@@ -80,9 +81,8 @@
                 </label>
             </div>
 
-            <!-- 形状オプション -->
             <div class="gojuon-options">
-                <span style="font-size:12px; font-weight:bold; color:#555; display:block; width:100%;">形状オプション:</span>
+                <span class="opt-title">形状オプション:</span>
                 <label class="checkbox-label">
                     <input type="checkbox" id="allowRotation" onchange="searchByShape()">
                     回転OK
@@ -93,16 +93,53 @@
                 </label>
             </div>
             
-            <div id="gojuonSelectDisplay" style="margin-top:10px;">選択: なし</div>
+            <div id="gojuonSelectDisplay" class="select-display">選択: なし</div>
         </div>
 
         <div class="gojuon-wrapper">
-            <canvas id="lineCanvas"></canvas>
+            <canvas id="lineCanvasGojuon"></canvas>
             <div id="gojuonGrid" class="gojuon-grid"></div>
         </div>
 
         <div id="txtStatus" class="result-count">辞書ファイルを読み込み中...</div>
         <div id="gojuonResultArea" class="result-area"></div>
+    </div>
+
+    <!-- ▼▼▼ カスタム表検索タブ (新規追加) ▼▼▼ -->
+    <div id="tab-custom" class="tab-content">
+        <p class="description">
+            自由に文字を配置して検索できます
+        </p>
+
+        <!-- カスタム表作成エリア -->
+        <div class="custom-maker">
+            <textarea id="customInputText" placeholder="ここに文字を入力してください（例：あいうえおかきくけこ...）"></textarea>
+            <div class="custom-settings">
+                <label>列数: <input type="number" id="customCols" value="5" min="1" max="20"></label>
+                <button class="btn-create" onclick="createCustomTable()">表を作成</button>
+            </div>
+        </div>
+        
+        <div class="gojuon-controls">
+            <button class="btn-reset" onclick="resetSelection()">リセット</button>
+            
+            <!-- オプションは共通IDを使わず、クラスで管理するか、ここでは連動させるために同じIDの別要素を置かない工夫が必要。
+                 今回はシンプルに、五十音表タブのオプション設定を共用（参照）する形にします。
+                 ※画面上に見えているオプションUIを複製する場合はIDを変える必要がありますが、
+                 今回は簡略化のため「五十音タブの設定」がそのまま適用される仕様とします。
+                 （必要であればカスタムタブにも独自IDでオプションを追加し、JSで分岐させます）
+            -->
+            <p style="font-size:12px; color:#666;">※辞書や回転設定は「五十音表」タブの設定が適用されます</p>
+            
+            <div id="customSelectDisplay" class="select-display">選択: なし</div>
+        </div>
+
+        <div class="gojuon-wrapper">
+            <canvas id="lineCanvasCustom"></canvas>
+            <div id="customGrid" class="gojuon-grid custom-grid-style"></div>
+        </div>
+
+        <div id="customResultArea" class="result-area"></div>
     </div>
 
 </div>
