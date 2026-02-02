@@ -1,13 +1,13 @@
 // ▼▼▼ 語群検索用スプレッドシートのURL ▼▼▼
 const GAS_URL_WORD = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq2lxuWtuOMpGWsc_D7MtMn0tgdVjTqE8m_7cbcguahrbkCEtd_Uw/exec"; 
-// ▼▼▼ 解き直し検索用スプレッドシートのURL ▼▼▼
+// ▼▼▼ 解き直し検索用スプレッドシートのURL（新しいURLに更新済み） ▼▼▼
 const GAS_URL_REDONE = "https://script.google.com/macros/s/AKfycbwXDCSMakZ9lNb23ZFSSZk2fEJjLorzfIM5leiDIg_z3zsgFVn3L_59GSGkiYifElMG/exec"; 
 
-let appData = []; 
-let redoneData = []; 
-let dictStandard = []; 
-let dictPig = [];      
-let dictEnglish = [];  
+let appData = []; // 語群検索用データ
+let redoneData = []; // 解き直し検索用データ
+let dictStandard = []; // 日本語一般語.txt
+let dictPig = [];      // 豚辞書.txt
+let dictEnglish = [];  // 英語一般語.txt
 
 // モード管理
 let currentMode = 'gojuon'; 
@@ -16,18 +16,17 @@ let selectedCells = [];
 let customLayout = [];
 
 window.onload = function() {
-    // 1. 各種データ読み込み
-    loadData(); 
-    loadRedoneData(); 
+    loadData(); // 語群検索用
+    loadRedoneData(); // 解き直し検索用
     loadAllDictionaries(); 
     
-    // 2. 漢字データの自動展開処理（★ここが追加機能）
     if (typeof KANJI_DATA !== 'undefined') {
-        expandKanjiKeywords(); // kの内容からk2を自動生成
-        searchKanji();         // その状態で初期検索
+        // 漢字データの自動展開処理
+        expandKanjiKeywords();
+        searchKanji();
     }
     
-    // 3. 五十音表初期化
+    // 初期化：五十音
     activeLayout = GOJUON_LAYOUT;
     initGrid('gojuonGrid', 'lineCanvasGojuon', GOJUON_LAYOUT);
 };
@@ -63,12 +62,9 @@ function normalizeString(str) {
     return res.split('').map(char => smallToLarge[char] || char).join('');
 }
 
-
 // ------------------------------------
-// ★追加機能：パーツ自動展開ロジック
+// 漢字データのパーツ自動展開ロジック
 // ------------------------------------
-
-// ここに「このパーツがあったら、これをk2に追加する」というルールを書く
 const PART_EXPANSION = {
     "田": ["ヨ", "口", "ロ", "日", "十", "コ"],
     "言": ["口", "ロ"],
@@ -79,18 +75,15 @@ const PART_EXPANSION = {
     "日": ["口", "ロ", "コ", "ヨ"],
     "目": ["日", "口", "ロ", "コ", "ヨ"],
     "貝": ["目", "日", "口", "ロ", "八", "ハ"]
-    // 必要に応じてどんどん追加してください
 };
 
 function expandKanjiKeywords() {
+    if (typeof KANJI_DATA === 'undefined') return;
     KANJI_DATA.forEach(item => {
-        // k (基本キーワード) に登録されている文字をチェック
         if (item.k && item.k.length > 0) {
             item.k.forEach(key => {
-                // ルール定義にその文字があれば、中身を k2 に追加
                 if (PART_EXPANSION[key]) {
                     PART_EXPANSION[key].forEach(expandedPart => {
-                        // 重複しないように追加
                         if (!item.k2.includes(expandedPart)) {
                             item.k2.push(expandedPart);
                         }
@@ -100,7 +93,6 @@ function expandKanjiKeywords() {
         }
     });
 }
-
 
 // ------------------------------------
 // 解き直し検索機能
@@ -142,6 +134,7 @@ function searchRedone() {
 
     let foundPairs = [];
 
+    // redoneDataを使用
     redoneData.forEach(group => {
         const words = Array.isArray(group.words) ? group.words : [];
         if (words.length < 2) return;
@@ -161,6 +154,7 @@ function searchRedone() {
                 let idx1 = -1; 
                 let idx2 = -1; 
 
+                // 1. 通常の同じ位置チェック
                 const len = Math.min(w1.length, w2.length);
                 for (let k = 0; k < len; k++) {
                     if (w1[k] === charFrom && w2[k] === charTo) {
@@ -171,6 +165,7 @@ function searchRedone() {
                     }
                 }
 
+                // 2. 最後の文字同士チェック
                 if (!isMatch && matchLastChar) {
                     if (w1.length > 0 && w2.length > 0) {
                         const last1 = w1.length - 1;
@@ -241,6 +236,7 @@ const GOJUON_LAYOUT = [
     ['','を','ろ','よ','も','ほ','の','と','そ','こ','お']
 ];
 
+// 辞書読み込み
 async function loadAllDictionaries() {
     const statusEl = document.getElementById('txtStatus');
     statusEl.innerText = "辞書読み込み中...";
@@ -270,6 +266,7 @@ async function loadAllDictionaries() {
     statusEl.innerText = msg;
 }
 
+// グリッド生成（共通）
 function initGrid(gridId, canvasId, layout) {
     const grid = document.getElementById(gridId);
     if(!grid) return;
@@ -301,6 +298,7 @@ function initGrid(gridId, canvasId, layout) {
     }, 100);
 }
 
+// カスタム表作成
 function createCustomTable() {
     const text = document.getElementById('customInputText').value.replace(/\s/g, '').toUpperCase();
     const cols = parseInt(document.getElementById('customCols').value, 10);
@@ -386,6 +384,7 @@ function drawLines() {
     ctx.stroke();
 }
 
+// 形状検索ロジック
 function searchByShape() {
     const isCustom = (currentMode === 'custom');
     const resultArea = document.getElementById(isCustom ? 'customResultArea' : 'gojuonResultArea');
@@ -511,6 +510,8 @@ function searchKanji() {
     const searchInput = rawInput;
 
     const sortOption = document.getElementById('sortOption').value;
+    
+    // k2, k3 のチェック状態を個別に取得
     const useK2 = document.getElementById('useK2').checked;
     const useK3 = document.getElementById('useK3').checked;
     
