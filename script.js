@@ -1,781 +1,90 @@
-// ▼▼▼ 語群検索用スプレッドシートのURL ▼▼▼
-const GAS_URL_WORD = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq2lxuWtuOMpGWsc_D7MtMn0tgdVjTqE8m_7cbcguahrbkCEtd_Uw/exec"; 
-// ▼▼▼ 解き直し検索用スプレッドシートのURL ▼▼▼
-const GAS_URL_REDONE = "https://script.google.com/macros/s/AKfycbwXDCSMakZ9lNb23ZFSSZk2fEJjLorzfIM5leiDIg_z3zsgFVn3L_59GSGkiYifElMG/exec"; 
-
-let appData = []; 
-let redoneData = []; 
-let dictStandard = []; // 日本語一般語.txt
-let dictPig = [];      // 豚辞書.txt
-let dictEnglish = [];  // 英語一般語.txt
-
-// モード管理
-let currentMode = 'gojuon'; 
-let activeLayout = []; 
-let selectedCells = []; 
-let customLayout = [];
-
-window.onload = function() {
-    loadData(); 
-    loadRedoneData(); 
-    loadAllDictionaries(); 
-    
-    if (typeof KANJI_DATA !== 'undefined') {
-        expandKanjiKeywords();
-        searchKanji();
-    }
-    
-    // 初期化：五十音
-    activeLayout = GOJUON_LAYOUT;
-    initGrid('gojuonGrid', 'lineCanvasGojuon', GOJUON_LAYOUT);
-};
-
-// タブ切り替え
-function switchTab(tabName) {
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelector(`.tab-btn[onclick="switchTab('${tabName}')"]`).classList.add('active');
-    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-    document.getElementById(`tab-${tabName}`).classList.add('active');
-
-    if (tabName === 'gojuon') {
-        currentMode = 'gojuon';
-        activeLayout = GOJUON_LAYOUT;
-        resetSelection();
-    } else if (tabName === 'custom') {
-        currentMode = 'custom';
-        if (customLayout.length > 0) activeLayout = customLayout;
-        resetSelection();
-    } else if (tabName === 'redone') {
-        currentMode = 'redone';
-    }
-}
-
-// 共通ユーティリティ
-function hiraToKata(str) {
-    return str.replace(/[\u3041-\u3096]/g, m => String.fromCharCode(m.charCodeAt(0) + 0x60));
-}
-function normalizeString(str) {
-    let res = str.normalize('NFD').replace(/[\u3099\u309A]/g, "");
-    res = res.toUpperCase();
-    const smallToLarge = { 'っ':'つ', 'ゃ':'や', 'ゅ':'ゆ', 'ょ':'よ', 'ぁ':'あ', 'ぃ':'い', 'ぅ':'う', 'ぇ':'え', 'ぉ':'お' };
-    return res.split('').map(char => smallToLarge[char] || char).join('');
-}
-
-// 漢字データのパーツ自動展開ロジック
-const PART_EXPANSION = {
-    "田": ["ヨ", "口", "ロ", "日", "十", "コ"],
-    "言": ["口", "ロ"],
-    "音": ["立", "日"],
-    "車": ["日", "旦", "亘", "申", "口", "ロ", "田", "由", "甲"],
-    "門": ["日", "口", "ロ"],
-    "口": ["ロ", "コ"],
-    "日": ["口", "ロ", "コ", "ヨ"],
-    "目": ["日", "口", "ロ", "コ", "ヨ"],
-    "貝": ["目", "日", "口", "ロ", "八", "ハ"]
-};
-
-function expandKanjiKeywords() {
-    if (typeof KANJI_DATA === 'undefined') return;
-    KANJI_DATA.forEach(item => {
-        if (item.k && item.k.length > 0) {
-            item.k.forEach(key => {
-                if (PART_EXPANSION[key]) {
-                    PART_EXPANSION[key].forEach(expandedPart => {
-                        if (!item.k2.includes(expandedPart)) item.k2.push(expandedPart);
-                    });
-                }
-            });
-        }
-    });
-}
-
-// ------------------------------------
-// 解き直し検索機能
-// ------------------------------------
-async function loadRedoneData() {
-    const countEl = document.getElementById('redoneCount');
-    if (countEl) countEl.innerText = "データ読み込み中...";
-    try {
-        const response = await fetch(GAS_URL_REDONE);
-        if (!response.ok) throw new Error("Network response was not ok");
-        redoneData = await response.json();
-        if (countEl) countEl.innerText = `読み込み完了（全${redoneData.length}件）。文字を入力してください。`;
-    } catch (error) {
-        console.error(error);
-        if (countEl) countEl.innerText = "解き直しデータの読み込みに失敗しました。";
-    }
-}
-
-function searchRedone() {
-    const charFrom = document.getElementById('redoneFrom').value.trim();
-    const charTo = document.getElementById('redoneTo').value.trim();
-    const matchLastChar = document.getElementById('matchLastChar').checked; 
-    const matchSameLength = document.getElementById('matchSameLength').checked;
-    
-    const resultArea = document.getElementById('redoneResultArea');
-    const countEl = document.getElementById('redoneCount');
-    
-    resultArea.innerHTML = "";
-
-    if (!charFrom || !charTo) {
-        countEl.innerText = "変換前と変換後の文字を両方入力してください";
-        return;
-    }
-
-    if (redoneData.length === 0) {
-        countEl.innerText = "解き直しデータを読み込み中です...";
-        return;
-    }
-
-    let foundPairs = [];
-
-    redoneData.forEach(group => {
-        const words = Array.isArray(group.words) ? group.words : [];
-        if (words.length < 2) return;
-
-        for (let i = 0; i < words.length; i++) {
-            for (let j = 0; j < words.length; j++) {
-                if (i === j) continue;
-
-                const w1 = words[i];
-                const w2 = words[j];
-
-                if (matchSameLength && w1.length !== w2.length) {
-                    continue;
-                }
-
-                let isMatch = false;
-                let idx1 = -1; 
-                let idx2 = -1; 
-
-                // 1. 通常の同じ位置チェック
-                const len = Math.min(w1.length, w2.length);
-                for (let k = 0; k < len; k++) {
-                    if (w1[k] === charFrom && w2[k] === charTo) {
-                        isMatch = true;
-                        idx1 = k;
-                        idx2 = k;
-                        break; 
-                    }
-                }
-
-                // 2. 最後の文字同士チェック
-                if (!isMatch && matchLastChar) {
-                    if (w1.length > 0 && w2.length > 0) {
-                        const last1 = w1.length - 1;
-                        const last2 = w2.length - 1;
-                        if (w1[last1] === charFrom && w2[last2] === charTo) {
-                            isMatch = true;
-                            idx1 = last1;
-                            idx2 = last2;
-                        }
-                    }
-                }
-
-                if (isMatch) {
-                    foundPairs.push({
-                        groupName: group.groupName,
-                        w1: w1,
-                        w2: w2,
-                        idx1: idx1,
-                        idx2: idx2
-                    });
-                }
-            }
-        }
-    });
-
-    countEl.innerText = `ヒット: ${foundPairs.length}件`;
-
-    if (foundPairs.length === 0) {
-        resultArea.innerHTML = `<div class="no-result">見つかりませんでした</div>`;
-        return;
-    }
-
-    foundPairs.forEach(item => {
-        const card = document.createElement('div');
-        card.className = 'group-card match-perfect';
-        
-        const highlightChar = (str, idx) => {
-            if (idx < 0 || idx >= str.length) return str;
-            return str.substring(0, idx) + 
-                   `<span class="highlight">${str[idx]}</span>` + 
-                   str.substring(idx + 1);
-        };
-
-        const w1Html = highlightChar(item.w1, item.idx1);
-        const w2Html = highlightChar(item.w2, item.idx2);
-
-        card.innerHTML = `
-            <span class="group-name">${item.groupName}</span>
-            <div class="word-list">
-                <span class="word-item">${w1Html}</span>
-                <span style="font-size:12px; align-self:center;">→</span>
-                <span class="word-item">${w2Html}</span>
-            </div>
-        `;
-        resultArea.appendChild(card);
-    });
-}
-
-
-// ------------------------------------
-// 五十音表検索機能
-// ------------------------------------
-const GOJUON_LAYOUT = [
-    ['ん','わ','ら','や','ま','は','な','た','さ','か','あ'],
-    ['','','り','','み','ひ','に','ち','し','き','い'],
-    ['','','る','ゆ','む','ふ','ぬ','つ','す','く','う'],
-    ['','','れ','','め','へ','ね','て','せ','け','え'],
-    ['','を','ろ','よ','も','ほ','の','と','そ','こ','お']
-];
-
-// 辞書読み込み
-async function loadAllDictionaries() {
-    const statusEl = document.getElementById('txtStatus');
-    statusEl.innerText = "辞書読み込み中...";
-    const loadFile = async (filename) => {
-        try {
-            const res = await fetch(filename);
-            if (!res.ok) return [];
-            const text = await res.text();
-            return text.split(/\r\n|\n/).map(w => w.trim()).filter(w => w);
-        } catch (e) { return []; }
-    };
-
-    const [std, pig, eng] = await Promise.all([
-        loadFile('日本語一般語.txt'),
-        loadFile('豚辞書.txt'),
-        loadFile('英語一般語.txt')
-    ]);
-
-    dictStandard = std;
-    dictPig = pig;
-    dictEnglish = eng;
-
-    let msg = "";
-    msg += `日:${std.length}語 `;
-    msg += `豚:${pig.length}語 `;
-    msg += `英:${eng.length}語`;
-    statusEl.innerText = msg;
-}
-
-// グリッド生成（共通）
-function initGrid(gridId, canvasId, layout) {
-    const grid = document.getElementById(gridId);
-    if(!grid) return;
-    grid.innerHTML = "";
-    const cols = layout[0].length;
-    grid.style.gridTemplateColumns = `repeat(${cols}, 40px)`;
-    grid.style.gridTemplateRows = `repeat(${layout.length}, 40px)`;
-
-    layout.forEach((row, rIndex) => {
-        row.forEach((char, cIndex) => {
-            const div = document.createElement('div');
-            div.className = char ? 'cell' : 'cell empty';
-            div.innerText = char;
-            div.dataset.r = rIndex;
-            div.dataset.c = cIndex;
-            div.dataset.char = char;
-            if (char) {
-                div.onclick = () => onCellClick(div, rIndex, cIndex, char);
-            }
-            grid.appendChild(div);
-        });
-    });
-    setTimeout(() => {
-        const canvas = document.getElementById(canvasId);
-        if(canvas) {
-            canvas.width = grid.offsetWidth;
-            canvas.height = grid.offsetHeight;
-        }
-    }, 100);
-}
-
-// カスタム表作成
-function createCustomTable() {
-    const text = document.getElementById('customInputText').value.replace(/\s/g, '').toUpperCase();
-    const cols = parseInt(document.getElementById('customCols').value, 10);
-    if(!text || cols < 1) return;
-
-    customLayout = [];
-    let currentRow = [];
-    for (let i = 0; i < text.length; i++) {
-        currentRow.push(text[i]);
-        if (currentRow.length === cols) {
-            customLayout.push(currentRow);
-            currentRow = [];
-        }
-    }
-    if (currentRow.length > 0) {
-        while(currentRow.length < cols) currentRow.push('');
-        customLayout.push(currentRow);
-    }
-
-    activeLayout = customLayout;
-    resetSelection();
-    initGrid('customGrid', 'lineCanvasCustom', customLayout);
-}
-
-function onCellClick(div, r, c, char) {
-    if (selectedCells.length > 0 && selectedCells[selectedCells.length-1].char === char) {
-        selectedCells.pop();
-        div.classList.remove('selected');
-    } else {
-        selectedCells.push({char: char, r: r, c: c});
-        div.classList.add('selected');
-    }
-    updateDisplay();
-    drawLines();
-    searchByShape();
-}
-
-function resetSelection() {
-    selectedCells = [];
-    document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
-    updateDisplay();
-    drawLines();
-    const resultId = (currentMode === 'gojuon') ? 'gojuonResultArea' : 'customResultArea';
-    document.getElementById(resultId).innerHTML = "";
-}
-
-function updateDisplay() {
-    const text = selectedCells.map(s => s.char).join(' → ');
-    const displayId = (currentMode === 'gojuon') ? 'gojuonSelectDisplay' : 'customSelectDisplay';
-    const displayEl = document.getElementById(displayId);
-    if(displayEl) displayEl.innerText = "選択: " + (text || "なし");
-}
-
-function drawLines() {
-    const canvasId = (currentMode === 'gojuon') ? 'lineCanvasGojuon' : 'lineCanvasCustom';
-    const gridId = (currentMode === 'gojuon') ? 'gojuonGrid' : 'customGrid';
-    const canvas = document.getElementById(canvasId);
-    const grid = document.getElementById(gridId);
-    if (!canvas || !grid) return;
-
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    if (selectedCells.length < 2) return;
-
-    ctx.beginPath();
-    ctx.strokeStyle = "rgba(231, 76, 60, 0.7)";
-    ctx.lineWidth = 4;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-
-    selectedCells.forEach((cell, index) => {
-        const targetDiv = grid.querySelector(`div[data-r="${cell.r}"][data-c="${cell.c}"]`);
-        if (targetDiv) {
-            const rect = targetDiv.getBoundingClientRect();
-            const gridRect = grid.getBoundingClientRect();
-            const x = rect.left - gridRect.left + rect.width / 2;
-            const y = rect.top - gridRect.top + rect.height / 2;
-
-            if (index === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        }
-    });
-    ctx.stroke();
-}
-
-// 形状検索ロジック
-function searchByShape() {
-    const isCustom = (currentMode === 'custom');
-    const resultArea = document.getElementById(isCustom ? 'customResultArea' : 'gojuonResultArea');
-    
-    const suffix = isCustom ? '_custom' : '';
-    const allowRotation = document.getElementById('allowRotation' + suffix).checked;
-    const allowReflection = document.getElementById('allowReflection' + suffix).checked;
-    const useStd = document.getElementById('useDictStandard' + suffix).checked;
-    const usePig = document.getElementById('useDictPig' + suffix).checked;
-    // カスタムの方には英語辞書チェックボックスがある前提
-    const useEngEl = document.getElementById('useDictEnglish' + suffix);
-    const useEng = useEngEl ? useEngEl.checked : false;
-
-    resultArea.innerHTML = "";
-    if (selectedCells.length < 2) return;
-
-    let targetWords = [];
-    if (useStd) targetWords = targetWords.concat(dictStandard);
-    if (usePig) targetWords = targetWords.concat(dictPig);
-    if (useEng) targetWords = targetWords.concat(dictEnglish);
-    targetWords = [...new Set(targetWords)];
-
-    if (targetWords.length === 0) return;
-
-    const inputVectors = [];
-    for(let i=0; i<selectedCells.length-1; i++) {
-        inputVectors.push({
-            dr: selectedCells[i+1].r - selectedCells[i].r,
-            dc: selectedCells[i+1].c - selectedCells[i].c
-        });
-    }
-
-    let patterns = [inputVectors]; 
-    if (allowRotation) {
-        const rot90 = inputVectors.map(v => ({ dr: v.dc, dc: -v.dr }));
-        const rot180 = inputVectors.map(v => ({ dr: -v.dr, dc: -v.dc }));
-        const rot270 = inputVectors.map(v => ({ dr: -v.dc, dc: v.dr }));
-        patterns.push(rot90, rot180, rot270);
-    }
-    if (allowReflection) {
-        const currentPatterns = [...patterns];
-        currentPatterns.forEach(pat => {
-            const reflected = pat.map(v => ({ dr: v.dr, dc: -v.dc }));
-            patterns.push(reflected);
-        });
-    }
-
-    const matchedWords = [];
-
-    targetWords.forEach(word => {
-        if (word.length !== selectedCells.length) return;
-
-        const coords = [];
-        let isValid = true;
-        for (let char of word) {
-            const normalized = normalizeString(char);
-            const coord = getCoord(normalized, activeLayout);
-            if (!coord) {
-                isValid = false;
-                break;
-            }
-            coords.push(coord);
-        }
-
-        if (!isValid) return;
-
-        const wordVectors = [];
-        for(let i=0; i<coords.length-1; i++) {
-            wordVectors.push({
-                dr: coords[i+1].r - coords[i].r,
-                dc: coords[i+1].c - coords[i].c
-            });
-        }
-
-        const check = (vecs1, vecs2) => {
-            if (vecs1.length !== vecs2.length) return false;
-            for(let i=0; i<vecs1.length; i++) {
-                if (vecs1[i].dr !== vecs2[i].dr || vecs1[i].dc !== vecs2[i].dc) return false;
-            }
-            return true;
-        };
-
-        for(let pat of patterns) {
-            if (check(pat, wordVectors)) {
-                matchedWords.push(word);
-                break;
-            }
-        }
-    });
-
-    const uniqueMatches = [...new Set(matchedWords)];
-    uniqueMatches.sort((a, b) => a.localeCompare(b, 'ja'));
-
-    if (uniqueMatches.length === 0) {
-        resultArea.innerHTML = `<div class="no-result">見つかりませんでした</div>`;
-        return;
-    }
-
-    const card = document.createElement('div');
-    card.className = 'group-card match-perfect';
-    const wordsHtml = uniqueMatches.map(w => `<span class="word-item">${w}</span>`).join("");
-    card.innerHTML = `
-        <span class="group-name">同じ形の単語 (${uniqueMatches.length}件)</span>
-        <div class="word-list">${wordsHtml}</div>
-    `;
-    resultArea.appendChild(card);
-}
-
-function getCoord(char, layout) {
-    for(let r=0; r<layout.length; r++) {
-        for(let c=0; c<layout[r].length; c++) {
-            if (layout[r][c] === char) return {r, c};
-        }
-    }
-    return null;
-}
-
-// ------------------------------------
-// 漢字検索機能
-// ------------------------------------
-function searchKanji() {
-    const rawInput = document.getElementById('kanjiInput').value.trim();
-    // 漢字検索は入力をそのまま使用
-    const searchInput = rawInput;
-
-    const sortOption = document.getElementById('sortOption').value;
-    const useK2 = document.getElementById('useK2').checked;
-    const useK3 = document.getElementById('useK3').checked;
-    
-    const resultArea = document.getElementById('kanjiResultArea');
-    const countEl = document.getElementById('kanjiCount');
-
-    resultArea.innerHTML = "";
-
-    if (typeof KANJI_DATA === 'undefined') {
-        resultArea.innerHTML = `<div class="no-result">漢字データ読み込みエラー</div>`;
-        return;
-    }
-
-    let filteredData = KANJI_DATA;
-
-    if (searchInput) {
-        const inputChars = searchInput.split('');
-
-        filteredData = KANJI_DATA.filter(item => {
-            let keywords = [...(item.k || [])];
-            if (useK2 && item.k2) keywords = keywords.concat(item.k2);
-            if (useK3 && item.k3) keywords = keywords.concat(item.k3);
-
-            return inputChars.every(char => {
-                const matchChar = item.c.includes(char) || item.c.includes(rawInput);
-                const matchKeyword = keywords.some(k => k.includes(char));
-                return matchChar || matchKeyword;
-            });
-        });
-    }
-
-    filteredData.sort((a, b) => {
-        if (sortOption === "grade_asc") return a.g - b.g;
-        if (sortOption === "grade_desc") return b.g - a.g;
-        if (sortOption === "stroke_asc") return a.s - b.s;
-        if (sortOption === "stroke_desc") return b.s - a.s;
-        return 0;
-    });
-
-    countEl.innerText = `ヒット: ${filteredData.length}件`;
-
-    filteredData.forEach(item => {
-        const card = document.createElement('div');
-        card.className = 'kanji-card';
-        card.onclick = () => openModal(item);
-        const strokeDisplay = item.s > 0 ? item.s + '画' : '-';
-        card.innerHTML = `
-            <span class="kanji-char">${item.c}</span>
-            <div class="kanji-info">
-                <span>小${item.g}</span>
-                <span>${strokeDisplay}</span>
-            </div>
-        `;
-        resultArea.appendChild(card);
-    });
-
-    if (filteredData.length === 0) {
-        resultArea.innerHTML = `<div class="no-result">見つかりませんでした</div>`;
-    }
-}
-
-// --- モーダル表示機能 ---
-function openModal(item) {
-    const modal = document.getElementById('detailModal');
-    if (!modal) return;
-    const body = document.getElementById('modalBody');
-    const strokeDisplay = item.s > 0 ? item.s + '画' : '画数不明';
-    
-    const makeTags = (list, className) => {
-        if (!list || list.length === 0) return '<span style="color:#ccc; font-size:12px;">なし</span>';
-        return list.map(word => `<span class="${className} clickable-tag" onclick="searchByTag('${word}')">${word}</span>`).join('');
-    };
-
-    let similarHtml = '';
-    // 類似検索用に全キーワードを統合
-    let allMyKeywords = [...(item.k || [])];
-    if(item.k2) allMyKeywords = allMyKeywords.concat(item.k2);
-    if(item.k3) allMyKeywords = allMyKeywords.concat(item.k3);
-
-    if (allMyKeywords.length >= 1) { 
-        const similarItems = KANJI_DATA.map(otherItem => {
-            if (otherItem.c === item.c) return null;
-            let otherKeywords = [...(otherItem.k || [])];
-            if(otherItem.k2) otherKeywords = otherKeywords.concat(otherItem.k2);
-            if(otherItem.k3) otherKeywords = otherKeywords.concat(otherItem.k3);
-            if (otherKeywords.length === 0) return null;
-
-            const commonKeywords = otherKeywords.filter(k => allMyKeywords.includes(k));
-            const commonCount = commonKeywords.length;
-            const totalKeywords = otherKeywords.length;
-
-            if (commonCount >= 2) {
-                const ratio = commonCount / totalKeywords;
-                return { data: otherItem, count: commonCount, total: totalKeywords, ratio: ratio };
-            }
-            return null;
-        }).filter(val => val !== null);
-
-        similarItems.sort((a, b) => {
-            if (b.ratio !== a.ratio) return b.ratio - a.ratio;
-            return b.count - a.count;
-        });
-
-        if (similarItems.length > 0) {
-            let listHtml = similarItems.map(sim => {
-                return `<div class="similar-card" onclick="openModalByChar('${sim.data.c}')">
-                        <span class="similar-char">${sim.data.c}</span>
-                        <span class="similar-info">共通:${sim.count}/${sim.total}</span>
-                    </div>`;
-            }).join('');
-            similarHtml = `<div class="similar-section"><span class="similar-title">🔍 似ている漢字（一致率順）</span><div class="similar-list">${listHtml}</div></div>`;
-        }
-    }
-
-    body.innerHTML = `
-        <div class="detail-header">
-            <span class="detail-char">${item.c}</span>
-            <div class="detail-meta">小学${item.g}年生 / ${strokeDisplay}</div>
-        </div>
-        <div class="keyword-section"><span class="keyword-title">基本キーワード (k)</span><div class="keyword-tags">${makeTags(item.k, 'k-tag')}</div></div>
-        <div class="keyword-section"><span class="keyword-title">拡張キーワード1 (k2)</span><div class="keyword-tags">${makeTags(item.k2, 'k2-tag')}</div></div>
-        <div class="keyword-section"><span class="keyword-title">拡張キーワード2 (k3)</span><div class="keyword-tags">${makeTags(item.k3, 'k3-tag')}</div></div>
-        ${similarHtml}
-    `;
-    modal.style.display = "block";
-}
-
-function searchByTag(tag) {
-    closeModal();
-    document.getElementById('kanjiInput').value = tag;
-    
-    // タグ検索時はチェックボックスをONにする
-    if(document.getElementById('useK2')) document.getElementById('useK2').checked = true;
-    if(document.getElementById('useK3')) document.getElementById('useK3').checked = true;
-
-    searchKanji();
-}
-
-function openModalByChar(char) {
-    const item = KANJI_DATA.find(d => d.c === char);
-    if (item) openModal(item);
-}
-
-function closeModal() {
-    const modal = document.getElementById('detailModal');
-    if (modal) modal.style.display = "none";
-}
-window.onclick = function(event) {
-    if (event.target == document.getElementById('detailModal')) closeModal();
-}
-
-// ------------------------------------
-// 語群検索機能（GAS連動）
-// ------------------------------------
-async function loadData() {
-    const countEl = document.getElementById('resultCount');
-    if (countEl) countEl.innerText = "データ読み込み中...";
-
-    try {
-        const response = await fetch(GAS_URL_WORD); 
-        if (!response.ok) throw new Error("Network response was not ok");
-        appData = await response.json();
-        
-        if (countEl) countEl.innerText = `読み込み完了（全${appData.length}件）。文字を入力してください。`;
-        searchWords(); 
-    } catch (error) {
-        console.error(error);
-        if (countEl) countEl.innerText = "データの読み込みに失敗しました。";
-    }
-}
-
-function createHighlightedHtml(word, inputChars, looseMode) {
-    let html = "";
-    for (let char of word) {
-        let isMatch = false;
-        for (let inputChar of inputChars) {
-            let c1 = char.toLowerCase();
-            let c2 = inputChar.toLowerCase();
-            if (looseMode) {
-                c1 = normalizeString(c1);
-                c2 = normalizeString(c2);
-            }
-            if (c1 === c2) { isMatch = true; break; }
-        }
-        if (isMatch) html += `<span class="highlight">${char}</span>`;
-        else html += char;
-    }
-    return html;
-}
-
-function searchWords() {
-    const inputEl = document.getElementById('searchInput');
-    if (!inputEl) return;
-    
-    const input = inputEl.value.trim();
-    const resultArea = document.getElementById('resultArea');
-    const looseModeEl = document.getElementById('looseMode');
-    const looseMode = looseModeEl ? looseModeEl.checked : false;
-    
-    resultArea.innerHTML = "";
-
-    if (appData.length === 0) return;
-
-    if (!input) {
-        document.getElementById('resultCount').innerText = `文字を入力してください（全${appData.length}語群）`;
-        return;
-    }
-
-    const inputChars = input.split("");
-    let perfectMatches = [];
-    let nearMatches = [];
-
-    appData.forEach(group => {
-        let wordsArray = Array.isArray(group.words) ? group.words : [];
-        const combinedText = wordsArray.join("");
-        
-        const missingChars = inputChars.filter(originalChar => {
-            let targetChar = originalChar.toLowerCase();
-            let targetTextToSearch = combinedText.toLowerCase();
-            if (looseMode) {
-                targetChar = normalizeString(targetChar);
-                targetTextToSearch = normalizeString(targetTextToSearch);
-            }
-            return !targetTextToSearch.includes(targetChar);
-        });
-        
-        if (missingChars.length === 0) {
-            perfectMatches.push({ group: group, missing: [] });
-        } else if (missingChars.length === 1) {
-            nearMatches.push({ group: group, missing: missingChars });
-        }
-    });
-
-    perfectMatches.sort((a, b) => a.group.words.length - b.group.words.length);
-    nearMatches.sort((a, b) => a.group.words.length - b.group.words.length);
-
-    const totalCount = perfectMatches.length + nearMatches.length;
-    if (totalCount > 0) {
-        document.getElementById('resultCount').innerHTML = 
-           `完全一致: <strong style="color:#27ae60">${perfectMatches.length}件</strong> / 惜しい: <strong style="color:#e67e22">${nearMatches.length}件</strong>`;
-    } else {
-        document.getElementById('resultCount').innerText = "条件に合う語群が見つかりませんでした。";
-    }
-
-    [...perfectMatches, ...nearMatches].forEach(match => {
-        const group = match.group;
-        const isPerfect = match.missing.length === 0;
-        const card = document.createElement('div');
-        card.className = `group-card ${isPerfect ? 'match-perfect' : 'match-near'}`;
-        const badgeClass = isPerfect ? 'badge-perfect' : 'badge-near';
-        const badgeText = isPerfect ? '揃いました！' : 'あと1文字！';
-        
-        const wordsHtml = group.words.map(w => {
-            const highlighted = createHighlightedHtml(w, inputChars, looseMode);
-            return `<span class="word-item">${highlighted}</span>`;
-        }).join("");
-        
-        let html = `
-            <span class="badge ${badgeClass}">${badgeText}</span>
-            <span class="group-name">${group.groupName}</span>
-            <div class="word-list">${wordsHtml}</div>
-        `;
-        
-        if (!isPerfect) {
-            html += `<div class="missing-info">※ 「${match.missing[0]}」が含まれていません</div>`;
-        }
-        card.innerHTML = html;
-        resultArea.appendChild(card);
-    });
-    
-    if (totalCount === 0) {
-        resultArea.innerHTML = `<div class="no-result">条件に合う語群が見つかりませんでした。</div>`;
-    }
-}
+/* 基本設定 */
+body { font-family: "Helvetica Neue", Arial, sans-serif; background: #f8f9fa; color: #333; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+.container { max-width: 900px; width: 100%; text-align: center; }
+h1 { color: #2c3e50; margin-bottom: 20px; }
+.description { color: #7f8c8d; margin-bottom: 15px; font-size: 14px; }
+
+/* タブ */
+.tab-buttons { display: flex; justify-content: center; margin-bottom: 20px; gap: 10px; flex-wrap: wrap; }
+.tab-btn { padding: 8px 20px; font-size: 14px; border: none; border-radius: 20px; cursor: pointer; background-color: #ddd; color: #555; transition: 0.3s; font-weight: bold; }
+.tab-btn.active { background-color: #3498db; color: white; box-shadow: 0 4px 10px rgba(52, 152, 219, 0.3); }
+.tab-content { display: none; }
+.tab-content.active { display: block; animation: fadeIn 0.5s; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* 検索ボックス */
+.search-box { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; margin-bottom: 20px; }
+input[type="text"] { width: 90%; padding: 12px; font-size: 18px; border: 2px solid #dfe6e9; border-radius: 10px; outline: none; transition: 0.3s; }
+input[type="text"]:focus { border-color: #3498db; }
+.options, .sort-options, .gojuon-options { margin-top: 15px; display: flex; justify-content: center; gap: 10px; font-size: 14px; color: #555; align-items: center; flex-wrap: wrap; }
+.opt-title { font-size: 12px; font-weight: bold; color: #555; margin-right: 5px; }
+.checkbox-label { display: flex; align-items: center; cursor: pointer; user-select: none; margin-right: 10px; }
+.checkbox-label input { margin-right: 5px; transform: scale(1.2); }
+select { padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-size: 14px; }
+.result-count { margin-top: 10px; font-size: 13px; color: #95a5a6; }
+
+/* 結果エリア・カード */
+.result-area { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; width: 100%; margin-top: 20px; }
+.group-card { background: white; border-radius: 12px; padding: 15px; text-align: left; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 4px solid #3498db; position: relative; transition: 0.2s; }
+.group-card:hover { transform: translateY(-3px); }
+.match-perfect { border-top-color: #27ae60; }
+.match-near { border-top-color: #f39c12; }
+.group-name { display: block; font-size: 12px; color: #3498db; font-weight: bold; margin-bottom: 8px; text-transform: uppercase; }
+.match-perfect .group-name { color: #27ae60; }
+.match-near .group-name { color: #e67e22; }
+.word-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.word-item { background: #ebf5fb; color: #2980b9; padding: 2px 8px; border-radius: 4px; font-weight: bold; }
+.highlight { color: #e74c3c; font-weight: 900; text-decoration: underline; }
+.badge { position: absolute; top: 10px; right: 10px; font-size: 10px; padding: 2px 6px; border-radius: 4px; color: white; font-weight: bold; }
+.badge-perfect { background: #27ae60; }
+.badge-near { background: #f39c12; }
+.missing-info { font-size: 11px; color: #e67e22; margin-top: 5px; font-style: italic; }
+.no-result { grid-column: 1 / -1; padding: 40px; color: #bdc3c7; font-size: 16px; }
+.loading { grid-column: 1 / -1; color: #3498db; font-weight: bold; padding: 20px; }
+
+/* 漢字グリッド・モーダル */
+.kanji-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }
+.kanji-card { background: white; border-radius: 8px; padding: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-bottom: 3px solid #ddd; transition: 0.2s; cursor: pointer; }
+.kanji-card:hover { transform: translateY(-3px); border-bottom-color: #3498db; }
+.kanji-char { font-size: 32px; font-weight: bold; color: #333; display: block; line-height: 1.2; }
+.kanji-info { font-size: 10px; color: #7f8c8d; margin-top: 5px; display: flex; justify-content: space-around; }
+.modal { display: none; position: fixed; z-index: 200; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
+.modal-content { background-color: #fefefe; margin: 5% auto; padding: 30px; border-radius: 15px; width: 80%; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); text-align: left; position: relative; animation: zoomIn 0.3s; max-height: 80vh; overflow-y: auto; }
+@keyframes zoomIn { from {transform: scale(0.8); opacity: 0;} to {transform: scale(1); opacity: 1;} }
+.close-btn { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; position: absolute; top: 10px; right: 20px; }
+.close-btn:hover { color: black; }
+.detail-header { text-align: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 15px; }
+.detail-char { font-size: 60px; font-weight: bold; color: #3498db; display: block; }
+.detail-meta { font-size: 14px; color: #7f8c8d; }
+.keyword-section { margin-bottom: 15px; }
+.keyword-title { font-size: 12px; font-weight: bold; color: #555; display: block; margin-bottom: 5px; }
+.keyword-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.k-tag { background: #e0f7fa; color: #006064; padding: 4px 10px; border-radius: 15px; font-size: 14px; }
+.k2-tag { background: #f3e5f5; color: #4a148c; padding: 4px 10px; border-radius: 15px; font-size: 14px; }
+.k3-tag { background: #e8f5e9; color: #1b5e20; padding: 4px 10px; border-radius: 15px; font-size: 14px; }
+.clickable-tag { cursor: pointer; transition: 0.2s; border: 1px solid transparent; }
+.clickable-tag:hover { transform: scale(1.05); box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-color: rgba(0,0,0,0.1); }
+.similar-section { margin-top: 20px; padding-top: 15px; border-top: 2px dashed #eee; }
+.similar-title { font-size: 14px; font-weight: bold; color: #e67e22; margin-bottom: 10px; display: block; }
+.similar-list { display: flex; flex-wrap: wrap; gap: 10px; }
+.similar-card { background: #fff8e1; border: 1px solid #ffe0b2; border-radius: 8px; padding: 8px; text-align: center; cursor: pointer; transition: 0.2s; min-width: 60px; }
+.similar-card:hover { background: #ffe0b2; }
+.similar-char { font-size: 20px; font-weight: bold; color: #d35400; }
+.similar-info { font-size: 10px; color: #888; display: block; margin-top: 2px; }
+
+/* 五十音・カスタム表 */
+.gojuon-wrapper { position: relative; display: inline-block; margin: 20px auto; user-select: none; }
+.gojuon-grid { display: grid; gap: 4px; background-color: #eee; padding: 10px; border-radius: 10px; }
+.cell { width: 40px; height: 40px; background-color: white; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: 0.1s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+.cell:hover { background-color: #f0f8ff; }
+.cell.selected { background-color: #3498db; color: white; transform: scale(0.95); }
+.cell.empty { background-color: transparent; box-shadow: none; cursor: default; }
+canvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 10; }
+.gojuon-controls { margin-bottom: 10px; display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; max-width: 600px; margin: 0 auto 10px; }
+.btn-reset { background: #e74c3c; color: white; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; }
+.select-display { font-weight: bold; color: #3498db; }
+
+.custom-maker { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); width: 90%; max-width: 600px; margin: 0 auto 20px; }
+#customInputText { width: 100%; height: 60px; padding: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 10px; font-family: inherit; }
+.custom-settings { display: flex; justify-content: space-between; align-items: center; }
+.btn-create { background: #27ae60; color: white; border: none; padding: 8px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
