@@ -3,19 +3,19 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq2lxuW
 // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
 let appData = []; 
-let dictStandard = []; 
-let dictPig = [];      
-let dictEnglish = [];  
+let dictStandard = []; // 日本語一般語.txt
+let dictPig = [];      // 豚辞書.txt
+let dictEnglish = [];  // 英語一般語.txt
 
 // モード管理
-let currentMode = 'gojuon'; 
+let currentMode = 'gojuon'; // 'gojuon', 'custom', 'redone'
 let activeLayout = []; 
 let selectedCells = []; 
 let customLayout = [];
 
 window.onload = function() {
     loadData(); 
-    loadTxtData(); 
+    loadAllDictionaries(); 
     
     if (typeof KANJI_DATA !== 'undefined') {
         searchKanji();
@@ -64,7 +64,7 @@ function normalizeString(str) {
 function searchRedone() {
     const charFrom = document.getElementById('redoneFrom').value.trim();
     const charTo = document.getElementById('redoneTo').value.trim();
-    const matchLastChar = document.getElementById('matchLastChar').checked; // ★追加
+    const matchLastChar = document.getElementById('matchLastChar').checked;
     
     const resultArea = document.getElementById('redoneResultArea');
     const countEl = document.getElementById('redoneCount');
@@ -83,12 +83,10 @@ function searchRedone() {
 
     let foundPairs = [];
 
-    // 全語群データを走査
     appData.forEach(group => {
         const words = Array.isArray(group.words) ? group.words : [];
         if (words.length < 2) return;
 
-        // 総当たりでペアチェック
         for (let i = 0; i < words.length; i++) {
             for (let j = 0; j < words.length; j++) {
                 if (i === j) continue;
@@ -97,10 +95,9 @@ function searchRedone() {
                 const w2 = words[j];
 
                 let isMatch = false;
-                let idx1 = -1; // w1でのヒット位置
-                let idx2 = -1; // w2でのヒット位置
+                let idx1 = -1; 
+                let idx2 = -1; 
 
-                // 1. 通常の同じ位置チェック
                 const len = Math.min(w1.length, w2.length);
                 for (let k = 0; k < len; k++) {
                     if (w1[k] === charFrom && w2[k] === charTo) {
@@ -111,7 +108,6 @@ function searchRedone() {
                     }
                 }
 
-                // 2. ★追加: 最後の文字同士チェック（オプションONかつ未ヒットの場合）
                 if (!isMatch && matchLastChar) {
                     if (w1.length > 0 && w2.length > 0) {
                         const last1 = w1.length - 1;
@@ -144,12 +140,10 @@ function searchRedone() {
         return;
     }
 
-    // 結果表示
     foundPairs.forEach(item => {
         const card = document.createElement('div');
         card.className = 'group-card match-perfect';
         
-        // ハイライト処理（位置指定）
         const highlightChar = (str, idx) => {
             if (idx < 0 || idx >= str.length) return str;
             return str.substring(0, idx) + 
@@ -176,6 +170,7 @@ function searchRedone() {
 // ------------------------------------
 // 五十音表検索機能
 // ------------------------------------
+// レイアウト定義 (11列 x 5行, あ行を右端に)
 const GOJUON_LAYOUT = [
     ['ん','わ','ら','や','ま','は','な','た','さ','か','あ'],
     ['','','り','','み','ひ','に','ち','し','き','い'],
@@ -337,7 +332,6 @@ function searchByShape() {
     const isCustom = (currentMode === 'custom');
     const resultArea = document.getElementById(isCustom ? 'customResultArea' : 'gojuonResultArea');
     
-    // IDの接尾辞を切り替え
     const suffix = isCustom ? '_custom' : '';
     const allowRotation = document.getElementById('allowRotation' + suffix).checked;
     const allowReflection = document.getElementById('allowReflection' + suffix).checked;
@@ -365,6 +359,7 @@ function searchByShape() {
         });
     }
 
+    // パターン生成（回転・反転）
     let patterns = [inputVectors]; 
     if (allowRotation) {
         const rot90 = inputVectors.map(v => ({ dr: v.dc, dc: -v.dr }));
@@ -396,6 +391,7 @@ function searchByShape() {
             }
             coords.push(coord);
         }
+
         if (!isValid) return;
 
         const wordVectors = [];
@@ -454,9 +450,7 @@ function getCoord(char, layout) {
 // ------------------------------------
 function searchKanji() {
     const rawInput = document.getElementById('kanjiInput').value.trim();
-    // 漢字検索は入力をそのまま使う（カタカナ変換しない）
     const searchInput = rawInput;
-
     const sortOption = document.getElementById('sortOption').value;
     const checkbox = document.getElementById('useExtendedSearch');
     const useExtended = checkbox ? checkbox.checked : false;
@@ -583,8 +577,6 @@ function openModal(item) {
 function searchByTag(tag) {
     closeModal();
     document.getElementById('kanjiInput').value = tag;
-    const checkbox = document.getElementById('useExtendedSearch');
-    if (checkbox) checkbox.checked = true;
     searchKanji();
 }
 
