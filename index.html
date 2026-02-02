@@ -61,15 +61,15 @@
     <!-- ▼▼▼ 五十音表検索タブ ▼▼▼ -->
     <div id="tab-gojuon" class="tab-content">
         <p class="description">
-            選択したマスの「形」と同じ動きをする単語を探します
+            選択したマスの「形」と同じ動きをする単語を探します<br>
         </p>
         
         <div class="gojuon-controls">
             <button class="btn-reset" onclick="resetGojuon()">リセット</button>
             
-            <!-- 辞書選択オプション -->
+            <!-- 辞書選択 -->
             <div class="gojuon-options" style="border-bottom:1px dashed #ccc; padding-bottom:10px; margin-bottom:10px;">
-                <span style="font-size:12px; font-weight:bold; color:#555;">使用する辞書:</span>
+                <span style="font-size:12px; font-weight:bold; color:#555; display:block; width:100%;">使用する辞書:</span>
                 <label class="checkbox-label">
                     <input type="checkbox" id="useDictStandard" checked onchange="searchByShape()">
                     日本語一般語
@@ -82,7 +82,7 @@
 
             <!-- 形状オプション -->
             <div class="gojuon-options">
-                <span style="font-size:12px; font-weight:bold; color:#555;">形状オプション:</span>
+                <span style="font-size:12px; font-weight:bold; color:#555; display:block; width:100%;">形状オプション:</span>
                 <label class="checkbox-label">
                     <input type="checkbox" id="allowRotation" onchange="searchByShape()">
                     回転OK
