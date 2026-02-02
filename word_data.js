@@ -3,25 +3,33 @@ const GAS_URL_WORD = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq
 const GAS_URL_REDONE = "https://script.google.com/macros/s/AKfycbwXDCSMakZ9lNb23ZFSSZk2fEJjLorzfIM5leiDIg_z3zsgFVn3L_59GSGkiYifElMG/exec"; 
 
 // 共有データ変数
-let appData = [];        // 語群検索用
-let redoneData = [];     // 解き直し検索用
-let dictStandard = [];   // 日本語一般語.txt
-let dictPig = [];        // 豚辞書.txt
-let dictEnglish = [];    // 英語一般語.txt
+let appData = [];        
+let redoneData = [];     
+let dictStandard = [];   
+let dictPig = [];        
+let dictEnglish = [];    
+
+// モード管理（グローバル変数として確実に定義）
+var currentMode = 'gojuon'; 
+var activeLayout = []; 
+var selectedCells = []; 
+var customLayout = [];
 
 // 初期化処理
 window.onload = function() {
-    loadData();             // 語群
-    loadRedoneData();       // 解き直し
-    loadAllDictionaries();  // テキスト辞書
+    // データの読み込み
+    loadData();             
+    loadRedoneData();       
+    loadAllDictionaries();  
     
-    // 漢字データがあれば初期検索
-    if (typeof KANJI_DATA !== 'undefined') {
-        expandKanjiKeywords();
+    // 漢字検索の初期表示（空検索して全件表示）
+    if (typeof KANJI_DATA !== 'undefined' && typeof searchKanji === 'function') {
+        // パーツ展開をしてから検索
+        if(typeof expandKanjiKeywords === 'function') expandKanjiKeywords();
         searchKanji();
     }
     
-    // 五十音表の初期化（search_gojuon.jsの関数）
+    // 五十音表の初期化
     if(typeof initGojuuonTable === 'function') {
         initGojuuonTable();
     }
@@ -34,29 +42,75 @@ function switchTab(tabName) {
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
     document.getElementById(`tab-${tabName}`).classList.add('active');
 
-    // モードに応じたリセット処理
+    // モード切り替え
     if (tabName === 'gojuon') {
-        if(typeof resetGojuon === 'function') resetGojuon();
+        currentMode = 'gojuon';
+        // GOJUON_LAYOUTが読み込まれていればセット
+        if(typeof GOJUON_LAYOUT !== 'undefined') activeLayout = GOJUON_LAYOUT;
+        resetSelection();
     } else if (tabName === 'custom') {
-        if(typeof resetCustom === 'function') resetCustom();
-    } 
+        currentMode = 'custom';
+        if (customLayout.length > 0) activeLayout = customLayout;
+        resetSelection();
+    } else if (tabName === 'redone') {
+        currentMode = 'redone';
+    }
 }
 
-// ユーティリティ: ひらがな→カタカナ
-function hiraToKata(str) {
-    return str.replace(/[\u3041-\u3096]/g, m => String.fromCharCode(m.charCodeAt(0) + 0x60));
+// ------------------------------------
+// 共通UI操作関数（ここに集約）
+// ------------------------------------
+
+// セルクリック時の共通処理
+function onCellClick(div, r, c, char) {
+    if (selectedCells.length > 0 && selectedCells[selectedCells.length-1].char === char) {
+        selectedCells.pop();
+        div.classList.remove('selected');
+    } else {
+        selectedCells.push({char: char, r: r, c: c});
+        div.classList.add('selected');
+    }
+    
+    updateDisplay();
+    drawLines(); // 現在のモードに合わせて描画
+    
+    // モードに応じた検索を実行
+    if (currentMode === 'gojuon' && typeof searchGojuon === 'function') {
+        searchGojuon();
+    } else if (currentMode === 'custom' && typeof searchCustom === 'function') {
+        searchCustom();
+    }
 }
 
-// ユーティリティ: 正規化（濁点除去・大文字化）
-function normalizeString(str) {
-    let res = str.normalize('NFD').replace(/[\u3099\u309A]/g, "");
-    res = res.toUpperCase();
-    const smallToLarge = { 'っ':'つ', 'ゃ':'や', 'ゅ':'ゆ', 'ょ':'よ', 'ぁ':'あ', 'ぃ':'い', 'ぅ':'う', 'ぇ':'え', 'ぉ':'お' };
-    return res.split('').map(char => smallToLarge[char] || char).join('');
+// 選択リセット
+function resetSelection() {
+    selectedCells = [];
+    document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
+    
+    updateDisplay();
+    drawLines();
+
+    // 結果クリア
+    if(document.getElementById('gojuonResultArea')) document.getElementById('gojuonResultArea').innerHTML = "";
+    if(document.getElementById('customResultArea')) document.getElementById('customResultArea').innerHTML = "";
 }
 
-// 共通描画ロジック: 線を描く
-function drawLinesCommon(canvasId, gridId, selectedCells) {
+// 選択内容の表示更新
+function updateDisplay() {
+    const text = selectedCells.map(s => s.char).join(' → ');
+    
+    const gojuonDisp = document.getElementById('gojuonSelectDisplay');
+    if(gojuonDisp) gojuonDisp.innerText = "選択: " + (text || "なし");
+    
+    const customDisp = document.getElementById('customSelectDisplay');
+    if(customDisp) customDisp.innerText = "選択: " + (text || "なし");
+}
+
+// 線の描画（モード判定付き）
+function drawLines() {
+    const canvasId = (currentMode === 'gojuon') ? 'lineCanvasGojuon' : 'lineCanvasCustom';
+    const gridId = (currentMode === 'gojuon') ? 'gojuonGrid' : 'customGrid';
+    
     const canvas = document.getElementById(canvasId);
     const grid = document.getElementById(gridId);
     if (!canvas || !grid) return;
@@ -86,19 +140,49 @@ function drawLinesCommon(canvasId, gridId, selectedCells) {
     ctx.stroke();
 }
 
+// ------------------------------------
+// 共通ユーティリティ
+// ------------------------------------
+function hiraToKata(str) {
+    if(!str) return "";
+    return str.replace(/[\u3041-\u3096]/g, m => String.fromCharCode(m.charCodeAt(0) + 0x60));
+}
+
+function normalizeString(str) {
+    if(!str) return "";
+    let res = str.normalize('NFD').replace(/[\u3099\u309A]/g, "");
+    res = res.toUpperCase();
+    const smallToLarge = { 'っ':'つ', 'ゃ':'や', 'ゅ':'ゆ', 'ょ':'よ', 'ぁ':'あ', 'ぃ':'い', 'ぅ':'う', 'ぇ':'え', 'ぉ':'お' };
+    return res.split('').map(char => smallToLarge[char] || char).join('');
+}
+
+function getCoordCommon(char, layout) {
+    if(!layout) return null;
+    for(let r=0; r<layout.length; r++) {
+        for(let c=0; c<layout[r].length; c++) {
+            if (layout[r][c] === char) return {r, c};
+        }
+    }
+    return null;
+}
+
 // 共通検索ロジック: 形状検索
-function searchByShapeCommon(selectedCells, targetWords, activeLayout, resultAreaId) {
+function searchByShapeCommon(selectedCells, targetWords, layout, resultAreaId) {
     const resultArea = document.getElementById(resultAreaId);
+    if(!resultArea) return;
     resultArea.innerHTML = "";
     
     if (selectedCells.length < 2) return;
-    if (targetWords.length === 0) return;
+    if (!targetWords || targetWords.length === 0) return;
 
-    // オプションの取得（IDのsuffixで判定）
+    // オプションの取得
     const isCustom = (resultAreaId === 'customResultArea');
     const suffix = isCustom ? '_custom' : '';
-    const allowRotation = document.getElementById('allowRotation' + suffix).checked;
-    const allowReflection = document.getElementById('allowReflection' + suffix).checked;
+    const rotEl = document.getElementById('allowRotation' + suffix);
+    const refEl = document.getElementById('allowReflection' + suffix);
+    
+    const allowRotation = rotEl ? rotEl.checked : false;
+    const allowReflection = refEl ? refEl.checked : false;
 
     // 入力ベクトル
     const inputVectors = [];
@@ -134,7 +218,7 @@ function searchByShapeCommon(selectedCells, targetWords, activeLayout, resultAre
         let isValid = true;
         for (let char of word) {
             const normalized = normalizeString(char);
-            const coord = getCoordCommon(normalized, activeLayout);
+            const coord = getCoordCommon(normalized, layout);
             if (!coord) {
                 isValid = false;
                 break;
@@ -151,7 +235,6 @@ function searchByShapeCommon(selectedCells, targetWords, activeLayout, resultAre
             });
         }
 
-        // ベクトル比較
         for(let pat of patterns) {
             let isMatch = true;
             for(let i=0; i<pat.length; i++) {
@@ -183,13 +266,4 @@ function searchByShapeCommon(selectedCells, targetWords, activeLayout, resultAre
         <div class="word-list">${wordsHtml}</div>
     `;
     resultArea.appendChild(card);
-}
-
-function getCoordCommon(char, layout) {
-    for(let r=0; r<layout.length; r++) {
-        for(let c=0; c<layout[r].length; c++) {
-            if (layout[r][c] === char) return {r, c};
-        }
-    }
-    return null;
 }
