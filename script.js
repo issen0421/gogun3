@@ -3,12 +3,12 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq2lxuW
 // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
 let appData = []; 
-let dictStandard = []; // 日本語一般語.txt
-let dictPig = [];      // 豚辞書.txt
-let dictEnglish = [];  // 英語一般語.txt
+let dictStandard = []; 
+let dictPig = [];      
+let dictEnglish = [];  
 
 // モード管理
-let currentMode = 'gojuon'; // 'gojuon', 'custom', 'redone'
+let currentMode = 'gojuon'; 
 let activeLayout = []; 
 let selectedCells = []; 
 let customLayout = [];
@@ -59,11 +59,13 @@ function normalizeString(str) {
 }
 
 // ------------------------------------
-// 解き直し検索機能 (New!)
+// 解き直し検索機能
 // ------------------------------------
 function searchRedone() {
     const charFrom = document.getElementById('redoneFrom').value.trim();
     const charTo = document.getElementById('redoneTo').value.trim();
+    const matchLastChar = document.getElementById('matchLastChar').checked; // ★追加
+    
     const resultArea = document.getElementById('redoneResultArea');
     const countEl = document.getElementById('redoneCount');
     
@@ -86,8 +88,7 @@ function searchRedone() {
         const words = Array.isArray(group.words) ? group.words : [];
         if (words.length < 2) return;
 
-        // 同じグループ内の単語ペアを総当たりでチェック
-        // (A, B) と (B, A) は区別する（矢印に方向があるため）
+        // 総当たりでペアチェック
         for (let i = 0; i < words.length; i++) {
             for (let j = 0; j < words.length; j++) {
                 if (i === j) continue;
@@ -95,17 +96,31 @@ function searchRedone() {
                 const w1 = words[i];
                 const w2 = words[j];
 
-                // 文字単位で比較
-                // 文字数が違っても、重なっている範囲でチェックする
-                const len = Math.min(w1.length, w2.length);
                 let isMatch = false;
-                let matchIndex = -1;
+                let idx1 = -1; // w1でのヒット位置
+                let idx2 = -1; // w2でのヒット位置
 
+                // 1. 通常の同じ位置チェック
+                const len = Math.min(w1.length, w2.length);
                 for (let k = 0; k < len; k++) {
                     if (w1[k] === charFrom && w2[k] === charTo) {
                         isMatch = true;
-                        matchIndex = k;
-                        break; // 1箇所でも合致すればOKとする
+                        idx1 = k;
+                        idx2 = k;
+                        break; 
+                    }
+                }
+
+                // 2. ★追加: 最後の文字同士チェック（オプションONかつ未ヒットの場合）
+                if (!isMatch && matchLastChar) {
+                    if (w1.length > 0 && w2.length > 0) {
+                        const last1 = w1.length - 1;
+                        const last2 = w2.length - 1;
+                        if (w1[last1] === charFrom && w2[last2] === charTo) {
+                            isMatch = true;
+                            idx1 = last1;
+                            idx2 = last2;
+                        }
                     }
                 }
 
@@ -114,7 +129,8 @@ function searchRedone() {
                         groupName: group.groupName,
                         w1: w1,
                         w2: w2,
-                        index: matchIndex
+                        idx1: idx1,
+                        idx2: idx2
                     });
                 }
             }
@@ -133,8 +149,7 @@ function searchRedone() {
         const card = document.createElement('div');
         card.className = 'group-card match-perfect';
         
-        // ハイライト処理
-        // w1 の matchIndex の文字を赤く、w2 の matchIndex の文字を赤く
+        // ハイライト処理（位置指定）
         const highlightChar = (str, idx) => {
             if (idx < 0 || idx >= str.length) return str;
             return str.substring(0, idx) + 
@@ -142,8 +157,8 @@ function searchRedone() {
                    str.substring(idx + 1);
         };
 
-        const w1Html = highlightChar(item.w1, item.index);
-        const w2Html = highlightChar(item.w2, item.index);
+        const w1Html = highlightChar(item.w1, item.idx1);
+        const w2Html = highlightChar(item.w2, item.idx2);
 
         card.innerHTML = `
             <span class="group-name">${item.groupName}</span>
@@ -328,7 +343,6 @@ function searchByShape() {
     const allowReflection = document.getElementById('allowReflection' + suffix).checked;
     const useStd = document.getElementById('useDictStandard' + suffix).checked;
     const usePig = document.getElementById('useDictPig' + suffix).checked;
-    // カスタムの方には英語辞書チェックボックスがある前提
     const useEngEl = document.getElementById('useDictEnglish' + suffix);
     const useEng = useEngEl ? useEngEl.checked : false;
 
@@ -440,7 +454,9 @@ function getCoord(char, layout) {
 // ------------------------------------
 function searchKanji() {
     const rawInput = document.getElementById('kanjiInput').value.trim();
+    // 漢字検索は入力をそのまま使う（カタカナ変換しない）
     const searchInput = rawInput;
+
     const sortOption = document.getElementById('sortOption').value;
     const checkbox = document.getElementById('useExtendedSearch');
     const useExtended = checkbox ? checkbox.checked : false;
@@ -586,7 +602,7 @@ window.onclick = function(event) {
 }
 
 // ------------------------------------
-// 語群検索機能
+// 語群検索機能（GAS連動）
 // ------------------------------------
 async function loadData() {
     const countEl = document.getElementById('resultCount');
