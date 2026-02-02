@@ -3,17 +3,24 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq2lxuW
 // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
 let appData = []; // 語群データ
-let dictStandard = []; // 日本語一般語.txt
-let dictPig = [];      // 豚辞書.txt
+let txtWordList = []; // 日本語一般語.txtのデータ
+
+// 現在のモード管理（五十音 or カスタム）
+let currentMode = 'gojuon'; // 'gojuon' or 'custom'
+let activeLayout = []; // 現在使用中のレイアウト配列
+let selectedCells = []; // 選択されたセル
 
 window.onload = function() {
-    loadData(); // 語群データ読み込み
-    loadAllDictionaries(); // 辞書ファイル読み込み
+    loadData(); 
+    loadTxtData(); 
     
     if (typeof KANJI_DATA !== 'undefined') {
         searchKanji();
     }
-    initGojuuonTable();
+    
+    // 初期は五十音表
+    activeLayout = GOJUON_LAYOUT;
+    initGrid('gojuonGrid', 'lineCanvasGojuon', GOJUON_LAYOUT);
 };
 
 // タブ切り替え
@@ -22,6 +29,20 @@ function switchTab(tabName) {
     document.querySelector(`.tab-btn[onclick="switchTab('${tabName}')"]`).classList.add('active');
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
     document.getElementById(`tab-${tabName}`).classList.add('active');
+
+    // モード切り替えとリセット
+    if (tabName === 'gojuon') {
+        currentMode = 'gojuon';
+        activeLayout = GOJUON_LAYOUT;
+        resetSelection();
+    } else if (tabName === 'custom') {
+        currentMode = 'custom';
+        // カスタムレイアウトが未作成なら何もしない（作成ボタン待ち）
+        if (customLayout.length > 0) {
+            activeLayout = customLayout;
+        }
+        resetSelection();
+    }
 }
 
 // ------------------------------------
@@ -42,7 +63,7 @@ function normalizeString(str) {
 }
 
 // ------------------------------------
-// 五十音表検索機能
+// 五十音表・カスタム表 検索機能
 // ------------------------------------
 const GOJUON_LAYOUT = [
     ['ん','わ','ら','や','ま','は','な','た','さ','か','あ'],
@@ -52,13 +73,12 @@ const GOJUON_LAYOUT = [
     ['','を','ろ','よ','も','ほ','の','と','そ','こ','お']
 ];
 
-let selectedCells = []; 
+let customLayout = [];
 
-// 辞書ファイルを読み込む
-async function loadAllDictionaries() {
+// 辞書読み込み
+async function loadTxtData() {
     const statusEl = document.getElementById('txtStatus');
     statusEl.innerText = "辞書読み込み中...";
-    
     const loadFile = async (filename) => {
         try {
             const res = await fetch(filename);
@@ -69,31 +89,27 @@ async function loadAllDictionaries() {
             return [];
         }
     };
-
-    const [std, pig] = await Promise.all([
-        loadFile('日本語一般語.txt'),
-        loadFile('豚辞書.txt')
-    ]);
-
+    const [std, pig] = await Promise.all([loadFile('日本語一般語.txt'), loadFile('豚辞書.txt')]);
     dictStandard = std;
     dictPig = pig;
-
     let msg = "";
-    if (dictStandard.length > 0) msg += `一般語:${dictStandard.length}語 `;
-    else msg += `一般語:読込失敗 `;
-    
-    if (dictPig.length > 0) msg += `豚辞書:${dictPig.length}語 `;
-    else msg += `豚辞書:読込失敗 `;
-
+    msg += (dictStandard.length > 0) ? `一般語:${dictStandard.length}語 ` : `一般語:読込失敗 `;
+    msg += (dictPig.length > 0) ? `豚辞書:${dictPig.length}語 ` : `豚辞書:読込失敗 `;
     statusEl.innerText = msg;
 }
 
-function initGojuuonTable() {
-    const grid = document.getElementById('gojuonGrid');
+// グリッド生成（汎用）
+function initGrid(gridId, canvasId, layout) {
+    const grid = document.getElementById(gridId);
     if(!grid) return;
     
     grid.innerHTML = "";
-    GOJUON_LAYOUT.forEach((row, rIndex) => {
+    // 列数をCSSグリッドに適用
+    const cols = layout[0].length;
+    grid.style.gridTemplateColumns = `repeat(${cols}, 40px)`;
+    grid.style.gridTemplateRows = `repeat(${layout.length}, 40px)`;
+
+    layout.forEach((row, rIndex) => {
         row.forEach((char, cIndex) => {
             const div = document.createElement('div');
             div.className = char ? 'cell' : 'cell empty';
@@ -110,10 +126,40 @@ function initGojuuonTable() {
     });
     
     setTimeout(() => {
-        const canvas = document.getElementById('lineCanvas');
-        canvas.width = grid.offsetWidth;
-        canvas.height = grid.offsetHeight;
+        const canvas = document.getElementById(canvasId);
+        if(canvas) {
+            canvas.width = grid.offsetWidth;
+            canvas.height = grid.offsetHeight;
+        }
     }, 100);
+}
+
+// カスタム表の作成
+function createCustomTable() {
+    const text = document.getElementById('customInputText').value.replace(/\s/g, ''); // 改行もスペースも詰める
+    const cols = parseInt(document.getElementById('customCols').value, 10);
+    
+    if(!text || cols < 1) return;
+
+    // 文字列をグリッド配列に変換
+    customLayout = [];
+    let currentRow = [];
+    for (let i = 0; i < text.length; i++) {
+        currentRow.push(text[i]);
+        if (currentRow.length === cols) {
+            customLayout.push(currentRow);
+            currentRow = [];
+        }
+    }
+    if (currentRow.length > 0) {
+        // 残りを空文字で埋める
+        while(currentRow.length < cols) currentRow.push('');
+        customLayout.push(currentRow);
+    }
+
+    activeLayout = customLayout; // アクティブレイアウトを更新
+    resetSelection();
+    initGrid('customGrid', 'lineCanvasCustom', customLayout);
 }
 
 function onCellClick(div, r, c, char) {
@@ -130,24 +176,34 @@ function onCellClick(div, r, c, char) {
     searchByShape();
 }
 
-function resetGojuon() {
+function resetSelection() {
     selectedCells = [];
     document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
     updateDisplay();
     drawLines();
-    document.getElementById('gojuonResultArea').innerHTML = "";
+    
+    // 結果表示エリアのクリア（モードによって対象を変える）
+    const resultId = (currentMode === 'gojuon') ? 'gojuonResultArea' : 'customResultArea';
+    document.getElementById(resultId).innerHTML = "";
 }
 
 function updateDisplay() {
     const text = selectedCells.map(s => s.char).join(' → ');
-    document.getElementById('gojuonSelectDisplay').innerText = "選択: " + (text || "なし");
+    const displayId = (currentMode === 'gojuon') ? 'gojuonSelectDisplay' : 'customSelectDisplay';
+    const displayEl = document.getElementById(displayId);
+    if(displayEl) displayEl.innerText = "選択: " + (text || "なし");
 }
 
 function drawLines() {
-    const canvas = document.getElementById('lineCanvas');
-    const ctx = canvas.getContext('2d');
-    const grid = document.getElementById('gojuonGrid');
+    // 現在のモードに応じたキャンバスとグリッドを取得
+    const canvasId = (currentMode === 'gojuon') ? 'lineCanvasGojuon' : 'lineCanvasCustom';
+    const gridId = (currentMode === 'gojuon') ? 'gojuonGrid' : 'customGrid';
     
+    const canvas = document.getElementById(canvasId);
+    const grid = document.getElementById(gridId);
+    if (!canvas || !grid) return;
+
+    const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     if (selectedCells.length < 2) return;
 
@@ -172,9 +228,12 @@ function drawLines() {
     ctx.stroke();
 }
 
-// 形状検索ロジック
+// 形状検索ロジック（汎用）
 function searchByShape() {
-    const resultArea = document.getElementById('gojuonResultArea');
+    // 結果表示エリアの切り替え
+    const resultArea = document.getElementById((currentMode === 'gojuon') ? 'gojuonResultArea' : 'customResultArea');
+    
+    // オプション（五十音タブにあるものを共用）
     const allowRotation = document.getElementById('allowRotation').checked;
     const allowReflection = document.getElementById('allowReflection').checked;
     const useStd = document.getElementById('useDictStandard').checked;
@@ -191,7 +250,6 @@ function searchByShape() {
 
     if (targetWords.length === 0) return;
 
-    // 1. 入力ベクトル列
     const inputVectors = [];
     for(let i=0; i<selectedCells.length-1; i++) {
         inputVectors.push({
@@ -200,16 +258,14 @@ function searchByShape() {
         });
     }
 
-    // 2. パターン生成（回転・反転のみ、逆順なし）
-    let patterns = [inputVectors]; // 0度
-
+    // パターン生成（回転・反転）
+    let patterns = [inputVectors]; 
     if (allowRotation) {
         const rot90 = inputVectors.map(v => ({ dr: v.dc, dc: -v.dr }));
         const rot180 = inputVectors.map(v => ({ dr: -v.dr, dc: -v.dc }));
         const rot270 = inputVectors.map(v => ({ dr: -v.dc, dc: v.dr }));
         patterns.push(rot90, rot180, rot270);
     }
-
     if (allowReflection) {
         const currentPatterns = [...patterns];
         currentPatterns.forEach(pat => {
@@ -220,7 +276,6 @@ function searchByShape() {
 
     const matchedWords = [];
 
-    // 3. マッチング
     targetWords.forEach(word => {
         if (word.length !== selectedCells.length) return;
 
@@ -228,7 +283,8 @@ function searchByShape() {
         let isValid = true;
         for (let char of word) {
             const normalized = normalizeString(char);
-            const coord = getCoord(normalized);
+            // ★重要：現在のレイアウト(activeLayout)を使って座標を探す
+            const coord = getCoord(normalized, activeLayout);
             if (!coord) {
                 isValid = false;
                 break;
@@ -280,10 +336,11 @@ function searchByShape() {
     resultArea.appendChild(card);
 }
 
-function getCoord(char) {
-    for(let r=0; r<GOJUON_LAYOUT.length; r++) {
-        for(let c=0; c<GOJUON_LAYOUT[r].length; c++) {
-            if (GOJUON_LAYOUT[r][c] === char) {
+// 座標取得（レイアウト指定対応）
+function getCoord(char, layout) {
+    for(let r=0; r<layout.length; r++) {
+        for(let c=0; c<layout[r].length; c++) {
+            if (layout[r][c] === char) {
                 return {r: r, c: c};
             }
         }
@@ -368,7 +425,6 @@ function openModal(item) {
     const body = document.getElementById('modalBody');
     const strokeDisplay = item.s > 0 ? item.s + '画' : '画数不明';
     
-    // タグをクリックすると検索を実行
     const makeTags = (list, className) => {
         if (!list || list.length === 0) return '<span style="color:#ccc; font-size:12px;">なし</span>';
         return list.map(word => `<span class="${className} clickable-tag" onclick="searchByTag('${word}')">${word}</span>`).join('');
@@ -424,7 +480,8 @@ function openModal(item) {
 function searchByTag(tag) {
     closeModal();
     document.getElementById('kanjiInput').value = tag;
-    // 勝手にチェックをつける処理は削除しました
+    const checkbox = document.getElementById('useExtendedSearch');
+    if (checkbox) checkbox.checked = true;
     searchKanji();
 }
 
@@ -442,7 +499,7 @@ window.onclick = function(event) {
 }
 
 // ------------------------------------
-// 語群検索機能（GAS連動）
+// 語群検索機能
 // ------------------------------------
 async function loadData() {
     const countEl = document.getElementById('resultCount');
