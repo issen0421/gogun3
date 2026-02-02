@@ -1,14 +1,13 @@
 // ▼▼▼ 語群検索用スプレッドシートのURL ▼▼▼
 const GAS_URL_WORD = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq2lxuWtuOMpGWsc_D7MtMn0tgdVjTqE8m_7cbcguahrbkCEtd_Uw/exec"; 
-// ▼▼▼ 解き直し検索用スプレッドシートのURL（新しいURLを作成したらここに貼る） ▼▼▼
+// ▼▼▼ 解き直し検索用スプレッドシートのURL ▼▼▼
 const GAS_URL_REDONE = "https://script.google.com/macros/s/AKfycbwXDCSMakZ9lNb23ZFSSZk2fEJjLorzfIM5leiDIg_z3zsgFVn3L_59GSGkiYifElMG/exec"; 
-// ※現在は仮で同じURLにしています。必要に応じて書き換えてください。
 
-let appData = []; 
-let redoneData = []; 
-let dictStandard = []; 
-let dictPig = [];      
-let dictEnglish = [];  
+let appData = []; // 語群検索用データ
+let redoneData = []; // 解き直し検索用データ
+let dictStandard = []; // 日本語一般語.txt
+let dictPig = [];      // 豚辞書.txt
+let dictEnglish = [];  // 英語一般語.txt
 
 // モード管理
 let currentMode = 'gojuon'; 
@@ -17,9 +16,9 @@ let selectedCells = [];
 let customLayout = [];
 
 window.onload = function() {
-    loadData(); 
-    loadRedoneData(); 
-    loadAllDictionaries(); 
+    loadAppData(); // 語群データ
+    loadRedoneData(); // 解き直しデータ
+    loadAllDictionaries(); // テキスト辞書
     
     if (typeof KANJI_DATA !== 'undefined') {
         searchKanji();
@@ -37,6 +36,7 @@ function switchTab(tabName) {
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
     document.getElementById(`tab-${tabName}`).classList.add('active');
 
+    // モードに応じたリセット処理
     if (tabName === 'gojuon') {
         currentMode = 'gojuon';
         activeLayout = GOJUON_LAYOUT;
@@ -66,7 +66,7 @@ function normalizeString(str) {
 // ------------------------------------
 async function loadRedoneData() {
     const countEl = document.getElementById('redoneCount');
-    if (countEl) countEl.innerText = "データ読み込み中...";
+    if (countEl) countEl.innerText = "解き直しデータ読み込み中...";
     try {
         const response = await fetch(GAS_URL_REDONE);
         if (!response.ok) throw new Error("Network response was not ok");
@@ -82,7 +82,7 @@ function searchRedone() {
     const charFrom = document.getElementById('redoneFrom').value.trim();
     const charTo = document.getElementById('redoneTo').value.trim();
     const matchLastChar = document.getElementById('matchLastChar').checked; 
-    const matchSameLength = document.getElementById('matchSameLength').checked; // ★追加
+    const matchSameLength = document.getElementById('matchSameLength').checked;
     
     const resultArea = document.getElementById('redoneResultArea');
     const countEl = document.getElementById('redoneCount');
@@ -90,23 +90,21 @@ function searchRedone() {
     resultArea.innerHTML = "";
 
     if (!charFrom || !charTo) {
-        countEl.innerText = "変換元と変換先の文字を両方入力してください";
+        countEl.innerText = "変換前と変換後の文字を両方入力してください";
         return;
     }
 
     if (redoneData.length === 0) {
-        countEl.innerText = "語群データを読み込み中です...";
+        countEl.innerText = "解き直しデータを読み込み中です...";
         return;
     }
 
     let foundPairs = [];
 
-    // redoneDataを使用
     redoneData.forEach(group => {
         const words = Array.isArray(group.words) ? group.words : [];
         if (words.length < 2) return;
 
-        // 総当たりでペアチェック
         for (let i = 0; i < words.length; i++) {
             for (let j = 0; j < words.length; j++) {
                 if (i === j) continue;
@@ -114,7 +112,6 @@ function searchRedone() {
                 const w1 = words[i];
                 const w2 = words[j];
 
-                // ★追加: 文字数一致チェック
                 if (matchSameLength && w1.length !== w2.length) {
                     continue;
                 }
@@ -689,10 +686,12 @@ function searchWords() {
         const missingChars = inputChars.filter(originalChar => {
             let targetChar = originalChar.toLowerCase();
             let targetTextToSearch = combinedText.toLowerCase();
+
             if (looseMode) {
                 targetChar = normalizeString(targetChar);
                 targetTextToSearch = normalizeString(targetTextToSearch);
             }
+            
             return !targetTextToSearch.includes(targetChar);
         });
         
