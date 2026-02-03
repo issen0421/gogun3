@@ -2,12 +2,16 @@
 const GAS_URL_WORD = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq2lxuWtuOMpGWsc_D7MtMn0tgdVjTqE8m_7cbcguahrbkCEtd_Uw/exec"; 
 const GAS_URL_REDONE = "https://script.google.com/macros/s/AKfycbwXDCSMakZ9lNb23ZFSSZk2fEJjLorzfIM5leiDIg_z3zsgFVn3L_59GSGkiYifElMG/exec"; 
 
-// 共有データ変数 (varを使ってグローバル化)
+// 共有データ変数
 var appData = [];        
 var redoneData = [];     
 var dictStandard = [];   
 var dictPig = [];        
 var dictEnglish = [];    
+
+// 高速化用データ
+var dictSets = { std: new Set(), pig: new Set(), eng: new Set() };
+var anagramMaps = { std: {}, pig: {}, eng: {} };
 
 // モード管理
 var currentMode = 'gojuon'; 
@@ -17,7 +21,7 @@ var customLayout = [];
 var isEditMode = false;
 var dragSrc = null;
 
-// 五十音レイアウト (共通で使うためここに定義)
+// 五十音レイアウト (共通)
 var GOJUON_LAYOUT = [
     ['ん','わ','ら','や','ま','は','な','た','さ','か','あ'],
     ['','','り','','み','ひ','に','ち','し','き','い'],
@@ -26,41 +30,35 @@ var GOJUON_LAYOUT = [
     ['','を','ろ','よ','も','ほ','の','と','そ','こ','お']
 ];
 
-// 初期化処理
 window.onload = function() {
-    // データの読み込み
     if(typeof loadData === 'function') loadData();             
     if(typeof loadRedoneData === 'function') loadRedoneData();       
     if(typeof loadAllDictionaries === 'function') loadAllDictionaries();  
     
-    // 漢字検索の初期表示（空検索して全件表示）
     if (typeof KANJI_DATA !== 'undefined' && typeof searchKanji === 'function') {
         if(typeof expandKanjiKeywords === 'function') expandKanjiKeywords();
-        searchKanji(); // 最初から表示
+        searchKanji();
     }
     
-    // 五十音表の初期化
     if(typeof initGojuuonTable === 'function') {
         initGojuuonTable();
     }
 };
 
-// タブ切り替え関数
 function switchTab(tabName) {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelector(`.tab-btn[onclick="switchTab('${tabName}')"]`).classList.add('active');
     document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
     document.getElementById(`tab-${tabName}`).classList.add('active');
 
-    // モード切り替え
     if (tabName === 'gojuon') {
         currentMode = 'gojuon';
         activeLayout = GOJUON_LAYOUT;
-        resetSelection();
+        if(typeof resetGojuon === 'function') resetGojuon();
     } else if (tabName === 'custom') {
         currentMode = 'custom';
         if (customLayout.length > 0) activeLayout = customLayout;
-        resetSelection();
+        if(typeof resetCustom === 'function') resetCustom();
     } else if (tabName === 'redone') {
         currentMode = 'redone';
     } else if (tabName === 'shift') {
@@ -68,7 +66,7 @@ function switchTab(tabName) {
     }
 }
 
-// 共通UI操作: セルクリック
+// 共通UI操作
 function onCellClick(div, r, c, char) {
     if (selectedCells.length > 0 && selectedCells[selectedCells.length-1].char === char) {
         selectedCells.pop();
@@ -81,44 +79,30 @@ function onCellClick(div, r, c, char) {
     updateDisplay();
     drawLinesCommon(); 
     
-    // モードに応じた検索を実行
-    if (currentMode === 'gojuon' && typeof searchGojuon === 'function') {
-        searchGojuon();
-    } else if (currentMode === 'custom' && typeof searchCustom === 'function') {
-        searchCustom();
-    }
+    if (currentMode === 'gojuon' && typeof searchGojuon === 'function') searchGojuon();
+    else if (currentMode === 'custom' && typeof searchCustom === 'function') searchCustom();
 }
 
-// 共通UI操作: リセット
 function resetSelection() {
     selectedCells = [];
     document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
-    
     updateDisplay();
     drawLinesCommon();
-
-    // 結果クリア
     if(document.getElementById('gojuonResultArea')) document.getElementById('gojuonResultArea').innerHTML = "";
     if(document.getElementById('customResultArea')) document.getElementById('customResultArea').innerHTML = "";
 }
 
-// 共通UI操作: 表示更新
 function updateDisplay() {
     const text = selectedCells.map(s => s.char).join(' → ');
-    
     const gojuonDisp = document.getElementById('gojuonSelectDisplay');
     if(gojuonDisp) gojuonDisp.innerText = "選択: " + (text || "なし");
-    
     const customDisp = document.getElementById('customSelectDisplay');
     if(customDisp) customDisp.innerText = "選択: " + (text || "なし");
 }
 
-// 共通UI操作: 線描画
 function drawLinesCommon() {
-    // 現在のモードからIDを決定
     const canvasId = (currentMode === 'gojuon') ? 'lineCanvasGojuon' : 'lineCanvasCustom';
     const gridId = (currentMode === 'gojuon') ? 'gojuonGrid' : 'customGrid';
-    
     const canvas = document.getElementById(canvasId);
     const grid = document.getElementById(gridId);
     if (!canvas || !grid) return;
@@ -140,36 +124,11 @@ function drawLinesCommon() {
             const gridRect = grid.getBoundingClientRect();
             const x = rect.left - gridRect.left + rect.width / 2;
             const y = rect.top - gridRect.top + rect.height / 2;
-
             if (index === 0) ctx.moveTo(x, y);
             else ctx.lineTo(x, y);
         }
     });
     ctx.stroke();
-}
-
-// ユーティリティ
-function hiraToKata(str) {
-    if(!str) return "";
-    return str.replace(/[\u3041-\u3096]/g, m => String.fromCharCode(m.charCodeAt(0) + 0x60));
-}
-
-function normalizeString(str) {
-    if(!str) return "";
-    let res = str.normalize('NFD').replace(/[\u3099\u309A]/g, "");
-    res = res.toUpperCase();
-    const smallToLarge = { 'っ':'つ', 'ゃ':'や', 'ゅ':'ゆ', 'ょ':'よ', 'ぁ':'あ', 'ぃ':'い', 'ぅ':'う', 'ぇ':'え', 'ぉ':'お', 'ゎ':'わ', 'ゔ':'う', 'ゐ':'い', 'ゑ':'え' };
-    return res.split('').map(char => smallToLarge[char] || char).join('');
-}
-
-function getCoordCommon(char, layout) {
-    if(!layout) return null;
-    for(let r=0; r<layout.length; r++) {
-        for(let c=0; c<layout[r].length; c++) {
-            if (layout[r][c] === char) return {r, c};
-        }
-    }
-    return null;
 }
 
 // 共通検索ロジック: 形状検索
@@ -185,7 +144,6 @@ function searchByShapeCommon(selectedCells, targetWords, layout, resultAreaId) {
     const suffix = isCustom ? '_custom' : '';
     const rotEl = document.getElementById('allowRotation' + suffix);
     const refEl = document.getElementById('allowReflection' + suffix);
-    
     const allowRotation = rotEl ? rotEl.checked : false;
     const allowReflection = refEl ? refEl.checked : false;
 
@@ -269,4 +227,26 @@ function searchByShapeCommon(selectedCells, targetWords, layout, resultAreaId) {
         <div class="word-list">${wordsHtml}</div>
     `;
     resultArea.appendChild(card);
+}
+
+function getCoordCommon(char, layout) {
+    if(!layout) return null;
+    for(let r=0; r<layout.length; r++) {
+        for(let c=0; c<layout[r].length; c++) {
+            if (layout[r][c] === char) return {r, c};
+        }
+    }
+    return null;
+}
+
+// 辞書インデックス構築
+function buildSearchIndex(key, words) {
+    dictSets[key] = new Set(words);
+    anagramMaps[key] = {};
+    words.forEach(word => {
+        const normalized = normalizeString(word);
+        const sorted = normalized.split('').sort().join('');
+        if (!anagramMaps[key][sorted]) anagramMaps[key][sorted] = [];
+        anagramMaps[key][sorted].push(word);
+    });
 }
