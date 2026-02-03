@@ -1,100 +1,164 @@
 // ------------------------------------
 // パーツ自動展開ルール
-// キー: k(基本キーワード)にある文字
-// 値: { k: [...], k2: [...], k3: [...] } の形式で、自動追加したい文字を指定
+// キー: パーツの文字
+// 値: { same:[], lower1:[], lower2:[] }
+//      same   : 同じ階層に追加 (k->k, k2->k2)
+//      lower1 : 1つ下の階層に追加 (k->k2, k2->k3)
+//      lower2 : 2つ下の階層に追加 (k->k3, k2->k3)
 // ------------------------------------
 const PART_EXPANSION = {
     "田": { 
-        k: [], // k に追加したいものがあればここに書く
-        k2: ["ヨ", "口", "ロ", "日", "十", "コ"], 
-        k3: [] 
+        same: [], 
+        lower1: ["ヨ", "口", "ロ", "日", "十", "コ", "干", "土"], 
+        lower2: ["二", "ニ", "三", "ミ", "王", "ト", "士"] 
     },
     "言": { 
-        k: [],
-        k2: ["口", "ロ"], 
-        k3: [] 
+        same: ["口", "ロ"], 
+        lower1: [], 
+        lower2: [ "二", "三", "ニ", "ミ"] 
     },
     "音": { 
-        k: [],
-        k2: ["立", "日"], 
-        k3: [] 
+        same: ["立", "日"], 
+        lower1: ["口", "ロ"], 
+        lower2: [] 
     },
     "車": { 
-        k: [],
-        k2: ["日", "旦", "亘", "申", "口", "ロ", "田", "由", "甲"], 
-        k3: [] 
+        same: [], 
+        lower1: ["日", "旦", "亘", "申", "口", "ロ", "田", "由", "甲", "三", "二", "ニ",], 
+        lower2: ["ミ", "干", "土", "王", "ト", "士"] 
     },
     "門": { 
-        k: [],
-        k2: ["日", "口", "ロ"], 
-        k3: [] 
+        same: [], 
+        lower1: [], 
+        lower2: ["日", "口", "ロ", "二", "三", "ニ", "ミ"] 
     },
     "口": { 
-        k: [],
-        k2: ["ロ", "コ"], 
-        k3: [] 
+        same: ["ロ"], 
+        lower1: ["コ"], 
+        lower2: [] 
     },
     "日": { 
-        k: [],
-        k2: ["口", "ロ", "コ", "ヨ"], 
-        k3: [] 
+        same: [], 
+        lower1: ["口", "ロ", "コ", "ヨ", "ト"], 
+        lower2: ["ニ", "三", "二", "ミ"] 
     },
     "目": { 
-        k: [],
-        k2: ["日", "口", "ロ", "コ", "ヨ"], 
-        k3: [] 
+        same: [], 
+        lower1: [], 
+        lower2: ["口", "ロ", "コ", "ヨ", "日", "ニ", "三", "二", "ミ"] 
     },
     "貝": { 
-        k: [],
-        k2: ["目", "日", "口", "ロ", "八", "ハ"], 
-        k3: [] 
+        same: ["目", "八", "ハ"], 
+        lower1: [], 
+        lower2: ["日", "口", "ロ", "コ", "ヨ", "日", "ニ", "三", "二", "ミ", "ト"] 
+    },
+    "糸": { 
+        same: ["目", "八", "ハ"], 
+        lower1: [], 
+        lower2: ["日", "口", "ロ", "コ", "ヨ", "日", "ニ", "三", "二", "ミ", "ト"] 
+    },
+    "大": { 
+        same: [], 
+        lower1: ["ナ", "人"], 
+        lower2: [] 
+    },
+    "エ": { 
+        same: ["工"], 
+        lower1: [], 
+        lower2: [] 
+    },
+    "カ": { 
+        same: ["力"], 
+        lower1: ["刀"], 
+        lower2: [] 
+    },
+    "タ": { 
+        same: ["夕"], 
+        lower1: ["ク"], 
+        lower2: [] 
+    },
+    "ト": { 
+        same: ["卜"], 
+        lower1: [], 
+        lower2: [] 
+    },
+    "ニ": { 
+        same: ["二"], 
+        lower1: [], 
+        lower2: [] 
+    },
+    "ヌ": { 
+        same: ["又"], 
+        lower1: ["フ"], 
+        lower2: [] 
+    },
+    "ハ": { 
+        same: ["八"], 
+        lower1: [], 
+        lower2: [] 
+    },
+    "ミ": { 
+        same: ["三"], 
+        lower1: [], 
+        lower2: [] 
+    },
+    "ロ": { 
+        same: ["口", "コ"], 
+        lower1: [], 
+        lower2: [] 
     }
-    // ここに追加していく
+    // ここにルールを追加してください
 };
 
 function expandKanjiKeywords() {
     if (typeof KANJI_DATA === 'undefined') return;
     
     KANJI_DATA.forEach(item => {
-        // エラー対策：初期化
+        // 初期化
         if (!item.k2) item.k2 = [];
         if (!item.k3) item.k3 = [];
 
-        // k に登録されているパーツを見て、自動展開ルールを適用
-        // ※ k配列自体が増える可能性があるため、コピーした配列でループを回す
-        if (item.k && item.k.length > 0) {
-            const originalKeywords = [...item.k];
+        // --- レベルごとの処理関数 ---
+        const processLevel = (currentLevelKeywords, currentLevelName) => {
+            // 現在のレベルにあるキーワードを走査（追加中の変更を避けるためコピーを使用）
+            const keywords = [...currentLevelKeywords];
             
-            originalKeywords.forEach(key => {
+            keywords.forEach(key => {
                 const rule = PART_EXPANSION[key];
                 if (rule) {
-                    // k への追加 (基本キーワード)
-                    if (rule.k && Array.isArray(rule.k)) {
-                        rule.k.forEach(expandedPart => {
-                            if (!item.k.includes(expandedPart)) {
-                                item.k.push(expandedPart);
-                            }
+                    // 1. same: 同じ階層に追加
+                    if (rule.same) {
+                        rule.same.forEach(p => {
+                            if (!item[currentLevelName].includes(p)) item[currentLevelName].push(p);
                         });
                     }
-                    // k2 への追加 (拡張キーワード1)
-                    if (rule.k2 && Array.isArray(rule.k2)) {
-                        rule.k2.forEach(expandedPart => {
-                            if (!item.k2.includes(expandedPart)) {
-                                item.k2.push(expandedPart);
-                            }
+
+                    // ターゲットレベルの決定 logic
+                    let target1 = (currentLevelName === 'k') ? 'k2' : 'k3';
+                    let target2 = 'k3'; // k の次は k2, それ以降(k2, k3)の下はすべて k3
+
+                    // 2. lower1: 1つ下の階層に追加
+                    if (rule.lower1) {
+                        rule.lower1.forEach(p => {
+                            if (!item[target1].includes(p)) item[target1].push(p);
                         });
                     }
-                    // k3 への追加 (拡張キーワード2)
-                    if (rule.k3 && Array.isArray(rule.k3)) {
-                        rule.k3.forEach(expandedPart => {
-                            if (!item.k3.includes(expandedPart)) {
-                                item.k3.push(expandedPart);
-                            }
+
+                    // 3. lower2: 2つ下の階層に追加
+                    if (rule.lower2) {
+                        rule.lower2.forEach(p => {
+                            if (!item[target2].includes(p)) item[target2].push(p);
                         });
                     }
                 }
             });
-        }
+        };
+
+        // 階層順に処理を実行 (k -> k2 -> k3)
+        // 上の階層から追加されたパーツが、次の階層の処理でさらに展開されるように順序を守る
+        if (item.k) processLevel(item.k, 'k');
+        if (item.k2) processLevel(item.k2, 'k2');
+        if (item.k3) processLevel(item.k3, 'k3');
     });
 }
 
