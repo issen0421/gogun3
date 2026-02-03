@@ -1,14 +1,5 @@
 /* --- 共通設定 --- */
-body {
-    font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
-    background: #f8f9fa;
-    color: #333;
-    margin: 0;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
+body { font-family: "Helvetica Neue", Arial, sans-serif; background: #f8f9fa; color: #333; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
 .container { max-width: 900px; width: 100%; text-align: center; }
 h1 { color: #2c3e50; margin-bottom: 20px; }
 .description { color: #7f8c8d; margin-bottom: 15px; font-size: 14px; }
@@ -21,9 +12,9 @@ h1 { color: #2c3e50; margin-bottom: 20px; }
 .tab-content.active { display: block; animation: fadeIn 0.5s; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-/* 検索ボックス・共通UI */
-.search-box { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); width: 100%; box-sizing: border-box; margin-bottom: 20px; }
-input[type="text"] { width: 90%; padding: 12px; font-size: 18px; border: 2px solid #dfe6e9; border-radius: 10px; outline: none; transition: border-color 0.3s; }
+/* 検索ボックス */
+.search-box { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; margin-bottom: 20px; }
+input[type="text"] { width: 90%; padding: 12px; font-size: 18px; border: 2px solid #dfe6e9; border-radius: 10px; outline: none; transition: 0.3s; }
 input[type="text"]:focus { border-color: #3498db; }
 .options, .sort-options, .gojuon-options { margin-top: 15px; display: flex; justify-content: center; gap: 10px; font-size: 14px; color: #555; align-items: center; flex-wrap: wrap; }
 .opt-title { font-size: 12px; font-weight: bold; color: #555; margin-right: 5px; }
@@ -34,7 +25,7 @@ select { padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-size: 14
 
 /* 結果エリア・カード */
 .result-area { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; width: 100%; margin-top: 20px; }
-.group-card { background: white; border-radius: 12px; padding: 15px; text-align: left; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); border-top: 4px solid #3498db; position: relative; transition: transform 0.2s; }
+.group-card { background: white; border-radius: 12px; padding: 15px; text-align: left; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 4px solid #3498db; position: relative; transition: 0.2s; }
 .group-card:hover { transform: translateY(-3px); }
 .match-perfect { border-top-color: #27ae60; }
 .match-near { border-top-color: #f39c12; }
@@ -53,7 +44,7 @@ select { padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-size: 14
 
 /* 漢字グリッド・モーダル */
 .kanji-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 10px; }
-.kanji-card { background: white; border-radius: 8px; padding: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-bottom: 3px solid #ddd; transition: transform 0.2s; cursor: pointer; }
+.kanji-card { background: white; border-radius: 8px; padding: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-bottom: 3px solid #ddd; transition: 0.2s; cursor: pointer; }
 .kanji-card:hover { transform: translateY(-3px); border-bottom-color: #3498db; }
 .kanji-char { font-size: 32px; font-weight: bold; color: #333; display: block; line-height: 1.2; }
 .kanji-info { font-size: 10px; color: #7f8c8d; margin-top: 5px; display: flex; justify-content: space-around; }
@@ -81,7 +72,7 @@ select { padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-size: 14
 .similar-char { font-size: 20px; font-weight: bold; color: #d35400; }
 .similar-info { font-size: 10px; color: #888; display: block; margin-top: 2px; }
 
-/* ▼▼▼ 五十音・カスタム表スタイル ▼▼▼ */
+/* 五十音・カスタム表 */
 .gojuon-wrapper { position: relative; display: inline-block; margin: 20px auto; user-select: none; }
 .gojuon-grid { display: grid; gap: 4px; background-color: #eee; padding: 10px; border-radius: 10px; }
 .cell { width: 40px; height: 40px; background-color: white; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: bold; border-radius: 5px; cursor: pointer; transition: 0.1s; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
@@ -98,3 +89,32 @@ canvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 10;
 #customInputText { width: 100%; height: 60px; padding: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 10px; font-family: inherit; }
 .custom-settings { display: flex; justify-content: space-between; align-items: center; }
 .btn-create { background: #27ae60; color: white; border: none; padding: 8px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+
+/* ▼▼▼ 追加: 編集モード用のスタイル ▼▼▼ */
+.edit-switch-label {
+    display: inline-flex; align-items: center; cursor: pointer; 
+    background: #fff; padding: 8px 15px; border-radius: 20px; border: 2px solid #ddd; transition: 0.2s;
+}
+.edit-switch-label:hover { border-color: #3498db; }
+.edit-switch-label input { margin-right: 8px; transform: scale(1.3); }
+.switch-text { font-weight: bold; font-size: 14px; }
+
+/* 編集モード時のセル */
+.edit-cell {
+    border: 2px solid #ccc;
+    cursor: grab; /* 掴めるカーソル */
+    background-color: white;
+}
+.edit-cell:active { cursor: grabbing; }
+.empty-placeholder {
+    border: 2px dashed #bbb;
+    background-color: #f9f9f9;
+}
+.empty-placeholder:hover {
+    background-color: #e3f2fd;
+}
+/* ドラッグ中のスタイル */
+.dragging {
+    opacity: 0.5;
+    transform: scale(0.9);
+}
