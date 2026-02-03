@@ -106,10 +106,8 @@ function searchShift() {
 
     // ============================================================
     //  モードA: ±同一視 (PlusMinus) が ON の場合
-    //  「距離がNなら、+方向でも-方向でもOK」な単語を探す
     // ============================================================
     if (allowPlusMinus) {
-        // 全単語スキャン
         let allWords = [];
         targetDictKeys.forEach(key => {
             if (key === 'std') allWords = allWords.concat(dictStandard);
@@ -121,7 +119,6 @@ function searchShift() {
         allWords.forEach(word => {
             if (word.length !== normalizedInput.length) return;
 
-            // 単語の正規化
             let normalizedWord = "";
             if (isAlphabet) {
                 if (!/^[a-zA-Z]+$/.test(word)) return;
@@ -131,14 +128,12 @@ function searchShift() {
                 normalizedWord = normalizeToSequence(word, sequence);
             }
 
-            // 判定と詳細取得
             const checkResult = checkDistanceMatch(normalizedInput, normalizedWord, sequence, allowAnagram);
             
             if (checkResult.isMatch) {
                 let diffStr = checkResult.diffString;
                 let subText = `(元: ${word})`;
 
-                // アナグラムの場合は (並び替え) を付記
                 if (allowAnagram) {
                     diffStr += ' <span style="font-size:0.8em; color:#555; margin-left:5px;">(並び替え)</span>';
                 }
@@ -155,7 +150,6 @@ function searchShift() {
     } 
     // ============================================================
     //  モードB: 通常モード (PlusMinus OFF)
-    //  「全員一律で +N ずらした単語」を探す
     // ============================================================
     else {
         for (let shift = 0; shift < sequence.length; shift++) {
@@ -212,7 +206,6 @@ function searchShift() {
 
     countEl.innerText = `${results.length}語が見つかりました`;
 
-    // ソート (距離/ずらし量昇順 -> 単語昇順)
     results.sort((a, b) => {
         if (a.sortKey !== b.sortKey) return a.sortKey - b.sortKey;
         return a.word.localeCompare(b.word);
@@ -238,12 +231,8 @@ function searchShift() {
 //  判定ロジック関数群
 // --------------------------------------------------------------------------
 
-// 入力とターゲットが、ある距離N（±N）の関係にあるか調べる
-// 戻り値: { isMatch: boolean, distance: number, diffString: string }
 function checkDistanceMatch(input, target, sequence, allowAnagram) {
     const maxDist = Math.floor(sequence.length / 2);
-    
-    // 距離 0 から maxDist まで順に試す
     for (let N = 0; N <= maxDist; N++) {
         const res = getDiffStringIfMatches(input, target, sequence, N, allowAnagram);
         if (res.isMatch) {
@@ -253,34 +242,26 @@ function checkDistanceMatch(input, target, sequence, allowAnagram) {
     return { isMatch: false, distance: -1, diffString: "" };
 }
 
-// 指定された距離Nで一致するか判定し、一致すれば差分文字列を返す
 function getDiffStringIfMatches(input, target, sequence, N, allowAnagram) {
     if (!allowAnagram) {
         // --- 通常比較 ---
         let diffs = [];
         for (let i = 0; i < input.length; i++) {
-            const d = getSignedDistance(input[i], target[i], sequence);
-            if (Math.abs(d) !== N && Math.abs(d) !== (sequence.length - N) % sequence.length) {
-                return { isMatch: false };
-            }
-            // 表示用の符号付き距離 (+2, -2)
-            // 距離Nが正解なら、表示は +N か -N になるはず
-            let disp = d;
-            // 遠回り表現の補正（例: +24 -> -2, -24 -> +2）
-            if (disp > sequence.length / 2) disp -= sequence.length;
-            if (disp < -sequence.length / 2) disp += sequence.length;
+            const idxIn = sequence.indexOf(input[i]);
+            const idxTg = sequence.indexOf(target[i]);
             
-            // 距離がNと一致するか再確認（補正後）
-            if (Math.abs(disp) !== N) return { isMatch: false };
+            // 距離と表示用文字列を取得（ループ判定含む）
+            const dObj = getDiffInfo(idxIn, idxTg, sequence);
+            
+            // 距離チェック
+            if (Math.abs(dObj.disp) !== N) return { isMatch: false };
 
-            let sign = disp >= 0 ? "+" : "";
-            diffs.push(sign + disp);
+            diffs.push(dObj.html);
         }
         return { isMatch: true, diffString: diffs.join(" ") };
 
     } else {
         // --- アナグラム比較 ---
-        // ヒットした単語(target)の各文字が、入力(input)のどの文字から作られたか(+N or -N)を探索する
         const result = solveAnagramDiff(input.split(''), target.split(''), sequence, N);
         if (result) {
             return { isMatch: true, diffString: result.join(" ") };
@@ -289,42 +270,54 @@ function getDiffStringIfMatches(input, target, sequence, N, allowAnagram) {
     }
 }
 
+// 2点間の距離情報と、表示用HTMLを返す
+function getDiffInfo(idx1, idx2, sequence) {
+    const len = sequence.length;
+    // 単純な引き算（直線距離）
+    const rawDiff = idx2 - idx1;
+    
+    // 最短距離計算（環状補正）
+    let disp = (idx2 - idx1 + len) % len;
+    if (disp > len / 2) disp -= len;
+
+    // ループ判定: 「単純な引き算」と「補正後の値」が食い違っていればループ
+    // 例: A(0)->Y(24) len=26. raw=24, disp=-2. 食い違うのでループ
+    const isLoop = (rawDiff !== disp);
+
+    let sign = disp >= 0 ? "+" : "";
+    let text = sign + disp;
+
+    // ループ時はスタイル適用
+    let html = text;
+    if (isLoop && disp !== 0) { // 0の場合はループマーク不要
+        html = `<span class="loop-highlight" title="境界をまたぎました">${text}<span class="loop-mark">↺</span></span>`;
+    }
+
+    return { disp: disp, html: html };
+}
+
 // アナグラム時の差分パターンを探索する
-// targetの並び順に合わせて、それぞれの文字が「入力のどの文字から +N/-N されたか」のリストを返す
 function solveAnagramDiff(inputChars, targetChars, sequence, N) {
-    // 再帰関数の定義
-    // currentDiffs: 現在確定している差分リスト
-    // remainingInput: まだ使っていない入力文字
-    // targetIdx: 次に判定するターゲット文字のインデックス
     const backtrack = (remainingInput, targetIdx, currentDiffs) => {
-        // 全てのターゲット文字を処理できたら成功
         if (targetIdx >= targetChars.length) {
             return currentDiffs;
         }
 
         const charTg = targetChars[targetIdx];
 
-        // remainingInput の中から、charTg との距離が N (±N) になる文字を探す
         for (let i = 0; i < remainingInput.length; i++) {
             const charIn = remainingInput[i];
             
-            // 距離と符号付き差分を計算
-            let d = getSignedDistance(charIn, charTg, sequence);
-            let disp = d;
-            // 補正
-            if (disp > sequence.length / 2) disp -= sequence.length;
-            if (disp < -sequence.length / 2) disp += sequence.length;
+            const idxIn = sequence.indexOf(charIn);
+            const idxTg = sequence.indexOf(charTg);
+            
+            const dObj = getDiffInfo(idxIn, idxTg, sequence);
 
-            if (Math.abs(disp) === N) {
-                // 条件に合う文字が見つかった
-                let sign = disp >= 0 ? "+" : "";
-                const diffStr = sign + disp;
-
-                // 入力文字を消費して次へ
+            if (Math.abs(dObj.disp) === N) {
                 const nextInput = [...remainingInput];
                 nextInput.splice(i, 1);
                 
-                const result = backtrack(nextInput, targetIdx + 1, [...currentDiffs, diffStr]);
+                const result = backtrack(nextInput, targetIdx + 1, [...currentDiffs, dObj.html]);
                 if (result) return result;
             }
         }
@@ -332,15 +325,6 @@ function solveAnagramDiff(inputChars, targetChars, sequence, N) {
     };
 
     return backtrack(inputChars, 0, []);
-}
-
-// 符号付き距離を返す (c1 -> c2)
-// 単純な引き算 (0〜len-1)
-function getSignedDistance(c1, c2, sequence) {
-    let idx1 = sequence.indexOf(c1);
-    let idx2 = sequence.indexOf(c2);
-    if (idx1 === -1 || idx2 === -1) return 9999;
-    return (idx2 - idx1 + sequence.length) % sequence.length;
 }
 
 // 正規化関数
