@@ -1,5 +1,3 @@
-// isEditMode, dragSrc は word_data.js で宣言済み
-
 function createCustomTable() {
     const text = document.getElementById('customInputText').value.replace(/\s/g, '').toUpperCase();
     const cols = parseInt(document.getElementById('customCols').value, 10);
