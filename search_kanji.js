@@ -1,42 +1,51 @@
 // ------------------------------------
 // パーツ自動展開ルール
 // キー: k(基本キーワード)にある文字
-// 値: { k2: [...], k3: [...] } の形式で、自動追加したい文字を指定
+// 値: { k: [...], k2: [...], k3: [...] } の形式で、自動追加したい文字を指定
 // ------------------------------------
 const PART_EXPANSION = {
     "田": { 
+        k: [], // k に追加したいものがあればここに書く
         k2: ["ヨ", "口", "ロ", "日", "十", "コ"], 
         k3: [] 
     },
     "言": { 
+        k: [],
         k2: ["口", "ロ"], 
         k3: [] 
     },
     "音": { 
+        k: [],
         k2: ["立", "日"], 
         k3: [] 
     },
     "車": { 
+        k: [],
         k2: ["日", "旦", "亘", "申", "口", "ロ", "田", "由", "甲"], 
         k3: [] 
     },
     "門": { 
+        k: [],
         k2: ["日", "口", "ロ"], 
         k3: [] 
     },
     "口": { 
+        k: [],
         k2: ["ロ", "コ"], 
         k3: [] 
     },
     "日": { 
+        k: [],
         k2: ["口", "ロ", "コ", "ヨ"], 
         k3: [] 
     },
     "目": { 
+        k: [],
         k2: ["日", "口", "ロ", "コ", "ヨ"], 
         k3: [] 
     },
     "貝": { 
+        k: [],
         k2: ["目", "日", "口", "ロ", "八", "ハ"], 
         k3: [] 
     }
@@ -52,11 +61,22 @@ function expandKanjiKeywords() {
         if (!item.k3) item.k3 = [];
 
         // k に登録されているパーツを見て、自動展開ルールを適用
+        // ※ k配列自体が増える可能性があるため、コピーした配列でループを回す
         if (item.k && item.k.length > 0) {
-            item.k.forEach(key => {
+            const originalKeywords = [...item.k];
+            
+            originalKeywords.forEach(key => {
                 const rule = PART_EXPANSION[key];
                 if (rule) {
-                    // k2 への追加
+                    // k への追加 (基本キーワード)
+                    if (rule.k && Array.isArray(rule.k)) {
+                        rule.k.forEach(expandedPart => {
+                            if (!item.k.includes(expandedPart)) {
+                                item.k.push(expandedPart);
+                            }
+                        });
+                    }
+                    // k2 への追加 (拡張キーワード1)
                     if (rule.k2 && Array.isArray(rule.k2)) {
                         rule.k2.forEach(expandedPart => {
                             if (!item.k2.includes(expandedPart)) {
@@ -64,7 +84,7 @@ function expandKanjiKeywords() {
                             }
                         });
                     }
-                    // k3 への追加
+                    // k3 への追加 (拡張キーワード2)
                     if (rule.k3 && Array.isArray(rule.k3)) {
                         rule.k3.forEach(expandedPart => {
                             if (!item.k3.includes(expandedPart)) {
