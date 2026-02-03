@@ -1,4 +1,4 @@
-// 編集モードやドラッグ変数は word_data.js で定義済み
+// isEditMode, dragSrc は word_data.js で宣言済み
 
 function createCustomTable() {
     const text = document.getElementById('customInputText').value.replace(/\s/g, '').toUpperCase();
