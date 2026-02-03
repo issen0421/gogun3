@@ -3,44 +3,35 @@ const GAS_URL_WORD = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq
 const GAS_URL_REDONE = "https://script.google.com/macros/s/AKfycbwXDCSMakZ9lNb23ZFSSZk2fEJjLorzfIM5leiDIg_z3zsgFVn3L_59GSGkiYifElMG/exec"; 
 
 // 共有データ変数
-let appData = [];        
-let redoneData = [];     
-let dictStandard = [];   
-let dictPig = [];        
-let dictEnglish = [];    
-
-// 高速化用データ (SetとMap)
-let dictSets = {
-    std: new Set(),
-    pig: new Set(),
-    eng: new Set()
-};
-let anagramMaps = {
-    std: {},
-    pig: {},
-    eng: {}
-};
+let appData = [];        // 語群検索用
+let redoneData = [];     // 解き直し検索用
+let dictStandard = [];   // 日本語一般語.txt
+let dictPig = [];        // 豚辞書.txt
+let dictEnglish = [];    // 英語一般語.txt
 
 // モード管理
 let currentMode = 'gojuon'; 
 let activeLayout = []; 
 let selectedCells = []; 
 let customLayout = [];
+
+// ★ここで定義（search_custom.jsからは削除する）
 let isEditMode = false;
 let dragSrc = null;
 
 // 初期化処理
 window.onload = function() {
-    if(typeof loadData === 'function') loadData();
-    if(typeof loadRedoneData === 'function') loadRedoneData();
-    // 辞書読み込みは search_gojuon.js にある関数を使う
-    if(typeof loadAllDictionaries === 'function') loadAllDictionaries();
+    loadData();             
+    loadRedoneData();       
+    loadAllDictionaries();  
     
-    if (typeof KANJI_DATA !== 'undefined' && typeof searchKanji === 'function') {
-        if(typeof expandKanjiKeywords === 'function') expandKanjiKeywords();
+    // 漢字データの展開と初期検索
+    if (typeof KANJI_DATA !== 'undefined' && typeof expandKanjiKeywords === 'function') {
+        expandKanjiKeywords();
         searchKanji();
     }
     
+    // 五十音表初期化
     if(typeof initGojuuonTable === 'function') {
         initGojuuonTable();
     }
@@ -75,19 +66,16 @@ function hiraToKata(str) {
     return str.replace(/[\u3041-\u3096]/g, m => String.fromCharCode(m.charCodeAt(0) + 0x60));
 }
 
-// ユーティリティ: 正規化（濁点除去・大文字化）
+// ユーティリティ: 正規化
 function normalizeString(str) {
     if(!str) return "";
     let res = str.normalize('NFD').replace(/[\u3099\u309A]/g, "");
     res = res.toUpperCase();
-    const smallToLarge = {
-        'っ':'つ', 'ゃ':'や', 'ゅ':'ゆ', 'ょ':'よ', 'ぁ':'あ', 'ぃ':'い', 'ぅ':'う', 'ぇ':'え', 'ぉ':'お', 'ゎ':'わ',
-        'ゔ':'う', 'ゐ':'い', 'ゑ':'え'
-    };
+    const smallToLarge = { 'っ':'つ', 'ゃ':'や', 'ゅ':'ゆ', 'ょ':'よ', 'ぁ':'あ', 'ぃ':'い', 'ぅ':'う', 'ぇ':'え', 'ぉ':'お', 'ゎ':'わ', 'ゔ':'う', 'ゐ':'い', 'ゑ':'え' };
     return res.split('').map(char => smallToLarge[char] || char).join('');
 }
 
-// 共通描画ロジック: 線を描く
+// 共通描画ロジック
 function drawLinesCommon(canvasId, gridId, selectedCells) {
     const canvas = document.getElementById(canvasId);
     const grid = document.getElementById(gridId);
@@ -118,7 +106,7 @@ function drawLinesCommon(canvasId, gridId, selectedCells) {
     ctx.stroke();
 }
 
-// 共通検索ロジック: 形状検索
+// 共通検索ロジック
 function searchByShapeCommon(selectedCells, targetWords, layout, resultAreaId) {
     const resultArea = document.getElementById(resultAreaId);
     if(!resultArea) return;
@@ -127,16 +115,11 @@ function searchByShapeCommon(selectedCells, targetWords, layout, resultAreaId) {
     if (selectedCells.length < 2) return;
     if (!targetWords || targetWords.length === 0) return;
 
-    // オプションの取得
     const isCustom = (resultAreaId === 'customResultArea');
     const suffix = isCustom ? '_custom' : '';
-    const rotEl = document.getElementById('allowRotation' + suffix);
-    const refEl = document.getElementById('allowReflection' + suffix);
-    
-    const allowRotation = rotEl ? rotEl.checked : false;
-    const allowReflection = refEl ? refEl.checked : false;
+    const allowRotation = document.getElementById('allowRotation' + suffix).checked;
+    const allowReflection = document.getElementById('allowReflection' + suffix).checked;
 
-    // 入力ベクトル
     const inputVectors = [];
     for(let i=0; i<selectedCells.length-1; i++) {
         inputVectors.push({
@@ -145,7 +128,6 @@ function searchByShapeCommon(selectedCells, targetWords, layout, resultAreaId) {
         });
     }
 
-    // パターン生成
     let patterns = [inputVectors];
     if (allowRotation) {
         const rot90 = inputVectors.map(v => ({ dr: v.dc, dc: -v.dr }));
