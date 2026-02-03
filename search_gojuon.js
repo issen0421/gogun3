@@ -30,11 +30,6 @@ async function loadAllDictionaries() {
     dictPig = pig;
     dictEnglish = eng;
 
-    // ★追加: 高速検索用データの構築
-    buildSearchIndex('std', dictStandard);
-    buildSearchIndex('pig', dictPig);
-    buildSearchIndex('eng', dictEnglish);
-
     if(statusEl) {
         let msg = "";
         msg += `日:${std.length}語 `;
@@ -44,28 +39,12 @@ async function loadAllDictionaries() {
     }
 }
 
-// インデックス構築関数
-function buildSearchIndex(key, words) {
-    dictSets[key] = new Set(words); // 完全一致用
-    anagramMaps[key] = {}; // アナグラム用
-    
-    words.forEach(word => {
-        // ソートしてキーにする
-        const normalized = normalizeString(word); // word_data.js の関数を使用
-        const sorted = normalized.split('').sort().join('');
-        
-        if (!anagramMaps[key][sorted]) {
-            anagramMaps[key][sorted] = [];
-        }
-        anagramMaps[key][sorted].push(word);
-    });
-}
-
 function initGojuuonTable() {
     activeLayout = GOJUON_LAYOUT;
     initGrid('gojuonGrid', 'lineCanvasGojuon', GOJUON_LAYOUT);
 }
 
+// グリッド生成（五十音・カスタム共通初期化処理）
 function initGrid(gridId, canvasId, layout) {
     const grid = document.getElementById(gridId);
     if(!grid) return;
@@ -100,6 +79,7 @@ function initGrid(gridId, canvasId, layout) {
     }, 100);
 }
 
+// 五十音表での検索（イベントハンドラから呼ばれる）
 function searchGojuon() {
     const useStd = document.getElementById('useDictStandard').checked;
     const usePig = document.getElementById('useDictPig').checked;
@@ -112,6 +92,13 @@ function searchGojuon() {
     searchByShapeCommon(selectedCells, targetWords, GOJUON_LAYOUT, 'gojuonResultArea');
 }
 
+// ユーザーがトリガーする形状変更イベント用
+function searchByShape() {
+    if(currentMode === 'gojuon') searchGojuon();
+    else if(currentMode === 'custom') searchCustom();
+}
+
+// html側の古い関数名対応（念のため）
 function resetGojuon() {
     resetSelection();
 }
