@@ -17,7 +17,6 @@
         <button class="tab-btn" onclick="switchTab('gojuon')">五十音表</button>
         <button class="tab-btn" onclick="switchTab('custom')">カスタム表</button>
         <button class="tab-btn" onclick="switchTab('redone')">解き直し</button>
-        <!-- ★追加: 文字ずらしタブ -->
         <button class="tab-btn" onclick="switchTab('shift')">文字ずらし</button>
     </div>
 
@@ -96,6 +95,7 @@
                 <button class="btn-create" onclick="createCustomTable()">表を作成</button>
             </div>
         </div>
+        
         <!-- 編集モード切替 -->
         <div style="margin-bottom: 10px; display:flex; flex-direction:column; align-items:center; gap:5px;">
             <label class="edit-switch-label">
@@ -108,6 +108,7 @@
             </div>
             <div id="editModeStatus" style="font-size:12px; color:#555;">作成ボタンを押して表を作ってください。</div>
         </div>
+
         <div class="gojuon-controls" id="gojuonControlsCustom">
             <button class="btn-reset" onclick="resetCustom()">リセット</button>
             <div class="gojuon-options">
@@ -155,7 +156,7 @@
         <div id="redoneResultArea" class="result-area"></div>
     </div>
 
-    <!-- 6. 文字ずらしタブ (新規追加) -->
+    <!-- 6. 文字ずらしタブ -->
     <div id="tab-shift" class="tab-content">
         <p class="description">
             入力した文字をずらしてできる単語を探します<br>
@@ -209,7 +210,6 @@
 <script src="search_gojuon.js"></script>
 <script src="search_custom.js"></script>
 <script src="search_redone.js"></script>
-<!-- ★新規追加 -->
 <script src="search_shift.js"></script>
 
 </body>
