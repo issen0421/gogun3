@@ -12,7 +12,7 @@ h1 { color: #2c3e50; margin-bottom: 20px; }
 .tab-content.active { display: block; animation: fadeIn 0.5s; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-/* 検索ボックス */
+/* 検索ボックス・共通UI */
 .search-box { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; box-sizing: border-box; margin-bottom: 20px; }
 input[type="text"] { width: 90%; padding: 12px; font-size: 18px; border: 2px solid #dfe6e9; border-radius: 10px; outline: none; transition: 0.3s; }
 input[type="text"]:focus { border-color: #3498db; }
@@ -25,7 +25,7 @@ select { padding: 8px; border-radius: 5px; border: 1px solid #ccc; font-size: 14
 
 /* 結果エリア・カード */
 .result-area { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; width: 100%; margin-top: 20px; }
-.group-card { background: white; border-radius: 12px; padding: 15px; text-align: left; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 4px solid #3498db; position: relative; transition: 0.2s; }
+.group-card { background: white; border-radius: 12px; padding: 15px; text-align: left; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05); border-top: 4px solid #3498db; position: relative; transition: 0.2s; }
 .group-card:hover { transform: translateY(-3px); }
 .match-perfect { border-top-color: #27ae60; }
 .match-near { border-top-color: #f39c12; }
@@ -84,7 +84,6 @@ canvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 10;
 .btn-reset { background: #e74c3c; color: white; border: none; padding: 5px 15px; border-radius: 5px; cursor: pointer; }
 .select-display { font-weight: bold; color: #3498db; }
 
-/* カスタム表作成エリア */
 .custom-maker { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); width: 90%; max-width: 600px; margin: 0 auto 20px; }
 #customInputText { width: 100%; height: 60px; padding: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 10px; font-family: inherit; }
 .custom-settings { display: flex; justify-content: space-between; align-items: center; }
@@ -98,11 +97,12 @@ canvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 10;
 .edit-switch-label:hover { border-color: #3498db; }
 .edit-switch-label input { margin-right: 8px; transform: scale(1.3); }
 .switch-text { font-weight: bold; font-size: 14px; }
+.btn-small { background: #3498db; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; }
 
 /* 編集モード時のセル */
 .edit-cell {
     border: 2px solid #ccc;
-    cursor: grab; /* 掴めるカーソル */
+    cursor: grab;
     background-color: white;
 }
 .edit-cell:active { cursor: grabbing; }
@@ -113,7 +113,6 @@ canvas { position: absolute; top: 0; left: 0; pointer-events: none; z-index: 10;
 .empty-placeholder:hover {
     background-color: #e3f2fd;
 }
-/* ドラッグ中のスタイル */
 .dragging {
     opacity: 0.5;
     transform: scale(0.9);
