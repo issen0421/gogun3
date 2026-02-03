@@ -103,13 +103,20 @@
             </div>
         </div>
         
-        <!-- ★編集モード切替スイッチ -->
-        <div style="margin-bottom: 10px;">
+        <!-- 編集モード切替スイッチ -->
+        <div style="margin-bottom: 10px; display:flex; flex-direction:column; align-items:center; gap:5px;">
             <label class="edit-switch-label">
                 <input type="checkbox" id="editModeCheckbox" onchange="toggleEditMode()">
                 <span class="switch-text">✏️ 配置を編集する（ドラッグ移動）</span>
             </label>
-            <div id="editModeStatus" style="font-size:12px; margin-top:5px; color:#555;">
+            
+            <!-- ★追加: 行列追加ボタン（編集モード時のみ表示） -->
+            <div id="layoutControls" style="display:none; gap:10px;">
+                <button class="btn-small" onclick="addCustomRow()">＋行を追加</button>
+                <button class="btn-small" onclick="addCustomCol()">＋列を追加</button>
+            </div>
+
+            <div id="editModeStatus" style="font-size:12px; color:#555;">
                 作成ボタンを押して表を作ってください。
             </div>
         </div>
@@ -174,7 +181,6 @@
     </div>
 </div>
 
-<!-- JSファイル群読み込み -->
 <script src="kanji_data.js"></script>
 <script src="word_data.js"></script>
 <script src="search_word.js"></script>
