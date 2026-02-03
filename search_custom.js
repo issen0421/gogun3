@@ -1,6 +1,4 @@
-// 編集モードフラグ
-let isEditMode = false;
-let dragSrc = null;
+// 編集モードやドラッグ変数は word_data.js で定義済み
 
 function createCustomTable() {
     const text = document.getElementById('customInputText').value.replace(/\s/g, '').toUpperCase();
@@ -20,31 +18,23 @@ function createCustomTable() {
         while(currentRow.length < cols) currentRow.push('');
         customLayout.push(currentRow);
     }
-
-    // ★修正: 余白（右5列、下5行）を追加
-    // まず既存の行に5列追加
-    customLayout.forEach(row => {
-        for(let i=0; i<5; i++) row.push('');
-    });
-    // 新しい5行を追加（列数は cols + 5）
+    // 余白追加
+    customLayout.forEach(row => { for(let i=0; i<5; i++) row.push(''); });
     const totalCols = cols + 5;
     for(let i=0; i<5; i++) {
         customLayout.push(new Array(totalCols).fill(''));
     }
 
-    // 作成したらアクティブレイアウト更新
     if(currentMode === 'custom') {
         activeLayout = customLayout;
         isEditMode = false;
         if(document.getElementById('editModeCheckbox')) document.getElementById('editModeCheckbox').checked = false;
         updateEditModeStatus();
-        
         resetCustom();
         renderCustomGrid();
     }
 }
 
-// 行・列の追加機能
 function addCustomRow() {
     if(!customLayout || customLayout.length === 0) return;
     const cols = customLayout[0].length;
@@ -60,12 +50,11 @@ function addCustomCol() {
     renderCustomGrid();
 }
 
-// 編集モード切替
 function toggleEditMode() {
     isEditMode = document.getElementById('editModeCheckbox').checked;
     updateEditModeStatus();
-    resetCustom(); // 選択解除
-    renderCustomGrid(); // 再描画
+    resetCustom(); 
+    renderCustomGrid();
 }
 
 function updateEditModeStatus() {
@@ -76,17 +65,16 @@ function updateEditModeStatus() {
     if(isEditMode) {
         status.innerText = "現在は「配置編集」モードです。文字をドラッグして移動できます。";
         status.style.color = "#e67e22";
-        if(controls) controls.style.display = 'none'; // 検索UIを隠す
-        if(layoutControls) layoutControls.style.display = 'flex'; // 追加ボタンを表示
+        if(controls) controls.style.display = 'none'; 
+        if(layoutControls) layoutControls.style.display = 'flex'; 
     } else {
         status.innerText = "現在は「検索」モードです。マスをクリックして選択してください。";
         status.style.color = "#333";
-        if(controls) controls.style.display = 'block'; // 検索UIを表示
-        if(layoutControls) layoutControls.style.display = 'none'; // 追加ボタンを隠す
+        if(controls) controls.style.display = 'block'; 
+        if(layoutControls) layoutControls.style.display = 'none'; 
     }
 }
 
-// カスタム専用グリッド描画（DnD対応）
 function renderCustomGrid() {
     const grid = document.getElementById('customGrid');
     if(!grid) return;
@@ -103,20 +91,13 @@ function renderCustomGrid() {
             const div = document.createElement('div');
             
             if (isEditMode) {
-                // 編集モード
                 div.className = 'cell edit-cell';
-                if(!char) div.classList.add('empty-placeholder'); // 空マスは点線
-                
-                div.draggable = true; // 空マスも移動の対象になりうる（スワップ先として）
-                
-                // DnDイベント
+                if(!char) div.classList.add('empty-placeholder');
+                div.draggable = true;
                 div.ondragstart = (e) => handleDragStart(e, rIndex, cIndex);
                 div.ondragover = (e) => handleDragOver(e);
                 div.ondrop = (e) => handleDrop(e, rIndex, cIndex);
-                
-                // タッチデバイス対応（簡易）は今回は省略
             } else {
-                // 検索モード
                 div.className = char ? 'cell' : 'cell empty';
                 if (char) {
                     div.onclick = () => onCustomCellClick(div, rIndex, cIndex, char);
@@ -127,12 +108,10 @@ function renderCustomGrid() {
             div.dataset.r = rIndex;
             div.dataset.c = cIndex;
             div.dataset.char = char;
-            
             grid.appendChild(div);
         });
     });
     
-    // Canvasサイズ調整
     setTimeout(() => {
         const canvas = document.getElementById('lineCanvasCustom');
         if(canvas) {
@@ -142,11 +121,7 @@ function renderCustomGrid() {
     }, 50);
 }
 
-// --- DnD Handlers ---
 function handleDragStart(e, r, c) {
-    // 文字がない場所からのドラッグは禁止（空マス移動は意味がないため）
-    // もし空マス移動（空白の挿入）をしたい場合はここを緩めるが、
-    // 基本は「文字を移動」なので文字ありのみ許可する
     if (!customLayout[r][c]) {
         e.preventDefault();
         return;
@@ -158,34 +133,28 @@ function handleDragStart(e, r, c) {
 }
 
 function handleDragOver(e) {
-    if (e.preventDefault) e.preventDefault(); // ドロップ許可
+    if (e.preventDefault) e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     return false;
 }
 
 function handleDrop(e, r, c) {
     if (e.stopPropagation) e.stopPropagation();
-    
-    // 自分自身へのドロップは何もしない
     if (!dragSrc || (dragSrc.r === r && dragSrc.c === c)) return false;
     
-    // データ入れ替え (Swap)
     const targetChar = customLayout[r][c];
     const srcChar = dragSrc.char;
     
     customLayout[r][c] = srcChar;
     customLayout[dragSrc.r][dragSrc.c] = targetChar;
     
-    // レイアウト更新反映
     activeLayout = customLayout;
     renderCustomGrid();
     
     return false;
 }
-// --------------------
 
 function onCustomCellClick(div, r, c, char) {
-    // 共通処理呼び出し
     if(typeof onCellClick === 'function') {
         onCellClick(div, r, c, char);
     }
