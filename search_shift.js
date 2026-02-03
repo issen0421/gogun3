@@ -82,6 +82,7 @@ function searchShift() {
         normalizedInput = normalizeToSequence(rawInput, sequence);
     }
 
+    // 入力文字チェック
     for (let char of normalizedInput) {
         if (!sequence.includes(char)) {
             countEl.innerText = `対応していない文字が含まれています: ${char}`;
@@ -89,117 +90,59 @@ function searchShift() {
         }
     }
 
+    // 検索実行
+    // 基本ロジック: 「0〜N文字ずらした文字列(またはそのアナグラム)」が辞書にあるか全探索する
     let results = [];
+    let foundWordSet = new Set(); // 重複排除用
 
-    // --- モードA: ±同一視 (PlusMinus) ---
-    if (allowPlusMinus) {
-        // ★修正点: ずらし量ごとに単語をまとめるオブジェクト
-        let matchedByShift = {}; 
-        
+    for (let shift = 0; shift < sequence.length; shift++) {
+        let shiftedString = "";
+        for (let char of normalizedInput) {
+            let index = sequence.indexOf(char);
+            let shiftedIndex = (index + shift) % sequence.length;
+            shiftedString += sequence[shiftedIndex];
+        }
+
         targetDictKeys.forEach(key => {
-            let dict = [];
-            if(key === 'std') dict = dictStandard;
-            if(key === 'pig') dict = dictPig;
-            if(key === 'eng') dict = dictEnglish;
-
-            dict.forEach(word => {
-                if (word.length !== normalizedInput.length) return;
-                const isWordAlpha = /^[a-zA-Z]+$/.test(word);
-                if (isAlphabet !== isWordAlpha) return;
-
-                let normalizedWord = "";
-                if (isAlphabet) normalizedWord = word.toUpperCase();
-                else normalizedWord = normalizeToSequence(word, sequence);
-
-                // 1文字目のズレ幅を計算
-                let idxIn = sequence.indexOf(normalizedInput[0]);
-                let idxWord = sequence.indexOf(normalizedWord[0]);
-                if (idxIn === -1 || idxWord === -1) return;
-
-                // 0〜sequence.length-1 の範囲でのズレ量
-                let diff = (idxWord - idxIn + sequence.length) % sequence.length;
-                let shiftAmount = Math.min(diff, sequence.length - diff); 
-
-                let isMatch = true;
-                for (let i = 1; i < normalizedInput.length; i++) {
-                    let iIn = sequence.indexOf(normalizedInput[i]);
-                    let iW = sequence.indexOf(normalizedWord[i]);
-                    if (iIn === -1 || iW === -1) { isMatch = false; break; }
-                    
-                    let d = (iW - iIn + sequence.length) % sequence.length;
-                    let s = Math.min(d, sequence.length - d);
-                    
-                    if (s !== shiftAmount) {
-                        isMatch = false;
-                        break;
-                    }
-                }
-
-                if (isMatch) {
-                    // ★修正点: diff (実際の移動量) をキーにして保存
-                    if (!matchedByShift[diff]) matchedByShift[diff] = [];
-                    matchedByShift[diff].push(word);
-                }
-            });
-        });
-
-        // ★修正点: 集計した結果を results 配列に展開
-        Object.keys(matchedByShift).sort((a,b)=>a-b).forEach(shiftKey => {
-            const shiftVal = parseInt(shiftKey);
-            const words = [...new Set(matchedByShift[shiftKey])];
+            if (!shiftIndexes[key]) return;
             
-            // ラベル作成 (+1, -2 などの表記)
-            let shiftLabel = "";
-            if (shiftVal === 0) shiftLabel = "そのまま";
-            else if (shiftVal <= sequence.length / 2) shiftLabel = `+${shiftVal}`;
-            else shiftLabel = `-${sequence.length - shiftVal}`;
-
-            results.push({
-                shift: shiftLabel,
-                shiftedString: `(相対関係が一致)`, 
-                words: words
-            });
-        });
-
-    } else {
-        // --- モードB: 通常の全探索ずらし ---
-        for (let shift = 0; shift < sequence.length; shift++) {
-            let shiftedString = "";
-            for (let char of normalizedInput) {
-                let index = sequence.indexOf(char);
-                let shiftedIndex = (index + shift) % sequence.length;
-                shiftedString += sequence[shiftedIndex];
+            let matchedWords = [];
+            
+            // アナグラムONならアナグラムマップから、OFFなら通常セットから検索
+            if (allowAnagram) {
+                const sorted = shiftedString.split('').sort().join('');
+                const found = shiftIndexes[key].anagram[sorted];
+                if (found) matchedWords = found;
+            } else {
+                if (shiftIndexes[key].set.has(shiftedString)) {
+                    matchedWords.push(shiftedString);
+                }
             }
 
-            let matched = [];
-            targetDictKeys.forEach(key => {
-                if (shiftIndexes[key]) {
-                    if (allowAnagram) {
-                        const sorted = shiftedString.split('').sort().join('');
-                        const found = shiftIndexes[key].anagram[sorted];
-                        if (found) matched = matched.concat(found);
-                    } else {
-                        if (shiftIndexes[key].set.has(shiftedString)) {
-                            matched.push(shiftedString);
-                        }
-                    }
-                }
-            });
-            matched = [...new Set(matched)];
-            
-            if (matched.length > 0) {
+            matchedWords.forEach(word => {
+                // 重複チェック (同じ単語が別のシフトのアナグラムとしてヒットする場合などを排除)
+                // ただし、±同一視モードでは「どのシフトでヒットしたか」が重要かもしれないが、
+                // 今回は「単語」をユニークにする。
+                if (foundWordSet.has(word)) return;
+                foundWordSet.add(word);
+
+                // ずらしラベル (+3 など)
                 let shiftLabel = "";
                 if (shift === 0) shiftLabel = "そのまま";
                 else if (shift <= sequence.length / 2) shiftLabel = `+${shift}`;
                 else shiftLabel = `-${sequence.length - shift}`;
+                
+                // 詳細な文字ごとの差分を計算 (+2 -2 +2 ... のような文字列)
+                const diffDetail = calculateDiffString(normalizedInput, word, sequence, isAlphabet);
 
                 results.push({
-                    shift: shiftLabel,
+                    baseShiftLabel: shiftLabel,
                     shiftedString: shiftedString,
-                    words: matched
+                    word: word,
+                    diffDetail: diffDetail
                 });
-            }
-        }
+            });
+        });
     }
 
     // 結果表示
@@ -209,27 +152,80 @@ function searchShift() {
         return;
     }
 
-    // 合計件数を計算して表示
-    const totalWords = results.reduce((sum, res) => sum + res.words.length, 0);
-    countEl.innerText = `${results.length}パターン (${totalWords}語) が見つかりました`;
+    countEl.innerText = `${results.length}語が見つかりました`;
 
+    // ±同一視(allowPlusMinus) がONなら、詳細差分を見出しにする
     results.forEach(res => {
         const card = document.createElement('div');
         card.className = 'group-card match-perfect';
         
-        const wordsHtml = res.words.map(w => `<span class="word-item">${w}</span>`).join("");
-        
+        // ヘッダー情報の出し分け
+        let headerMain = "";
+        let headerSub = "";
+
+        if (allowPlusMinus) {
+            // 詳細モード: 「+2 -2 +2」をメインに表示
+            headerMain = `<span style="color:#e74c3c; font-size:1.1em; letter-spacing:1px;">${res.diffDetail}</span>`;
+            if (allowAnagram) {
+                headerSub = `(元: ${res.baseShiftLabel} のアナグラム)`;
+            } else {
+                headerSub = `(元: ${res.baseShiftLabel})`;
+            }
+        } else {
+            // 通常モード: 「+3」をメインに表示
+            headerMain = `ずらし: <span style="color:#e74c3c; font-size:1.2em;">${res.baseShiftLabel}</span>`;
+            if (allowAnagram) {
+                headerSub = `(${res.shiftedString} の並び替え)`;
+            } else {
+                headerSub = `(${res.shiftedString})`;
+            }
+        }
+
         card.innerHTML = `
-            <span class="group-name">
-                ずらし: <span style="color:#e74c3c; font-size:1.2em;">${res.shift}</span> 
-                <span style="font-size:0.8em; color:#777;">${res.shiftedString}</span>
-            </span>
-            <div class="word-list">${wordsHtml}</div>
+            <div style="margin-bottom:5px;">
+                ${headerMain} <span style="font-size:0.8em; color:#777;">${headerSub}</span>
+            </div>
+            <div class="word-list">
+                <span class="word-item" style="font-size:1.2em;">${res.word}</span>
+            </div>
         `;
         resultArea.appendChild(card);
     });
 }
 
+// 入力文字列(input) から 目標単語(target) への文字ごとのズレを計算して文字列で返す
+function calculateDiffString(input, target, sequence, isAlphabet) {
+    // ターゲット単語も正規化して比較
+    let normalizedTarget = "";
+    if (isAlphabet) normalizedTarget = target.toUpperCase();
+    else normalizedTarget = normalizeToSequence(target, sequence);
+
+    if (input.length !== normalizedTarget.length) return "";
+
+    let diffs = [];
+    for (let i = 0; i < input.length; i++) {
+        let idxIn = sequence.indexOf(input[i]);
+        let idxTg = sequence.indexOf(normalizedTarget[i]);
+        
+        if (idxIn === -1 || idxTg === -1) {
+            diffs.push("?");
+            continue;
+        }
+
+        // 差分計算
+        let diff = (idxTg - idxIn + sequence.length) % sequence.length;
+        // 近い方で表示 (+25 よりも -1 と表示したい)
+        if (diff > sequence.length / 2) {
+            diff -= sequence.length;
+        }
+        
+        let sign = diff >= 0 ? "+" : ""; // マイナスは自動でつくのでプラスだけ明示
+        diffs.push(sign + diff);
+    }
+    return diffs.join(" ");
+}
+
+// 入力文字列を、指定されたシーケンス内の文字に正規化する
 function normalizeToSequence(str, sequence) {
     let res = "";
     for (let char of str) {
