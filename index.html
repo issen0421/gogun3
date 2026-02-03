@@ -20,29 +20,26 @@
         <button class="tab-btn" onclick="switchTab('shift')">文字ずらし</button>
     </div>
 
-    <!-- 1. 語群検索タブ -->
+    <!-- 1. 語群検索 -->
     <div id="tab-word" class="tab-content active">
         <p class="description">スプレッドシート(語群用)連動版</p>
         <div class="search-box">
             <input type="text" id="searchInput" placeholder="ひらがなorアルファベットを入力" oninput="searchWords()">
             <div class="options">
-                <label class="checkbox-label">
-                    <input type="checkbox" id="looseMode" onchange="searchWords()">
-                    濁音・半濁音・拗音を区別しない
-                </label>
+                <label class="checkbox-label"><input type="checkbox" id="looseMode" onchange="searchWords()">濁音・半濁音・拗音を区別しない</label>
             </div>
             <div id="resultCount" class="result-count">データを読み込み中...</div>
         </div>
         <div id="resultArea" class="result-area"></div>
     </div>
 
-    <!-- 2. 漢字検索タブ -->
+    <!-- 2. 漢字検索 -->
     <div id="tab-kanji" class="tab-content">
         <p class="description">小学校で習う漢字（1026字）の検索</p>
         <div class="search-box">
             <input type="text" id="kanjiInput" placeholder="部首や漢字を入力（例：言、心）" oninput="searchKanji()">
             <div class="options">
-                <span style="font-size:12px; font-weight:bold; color:#555; margin-right:5px;">検索対象:</span>
+                <span class="opt-title">検索対象:</span>
                 <label class="checkbox-label"><input type="checkbox" id="useK2" onchange="searchKanji()">拡張(k2)</label>
                 <label class="checkbox-label"><input type="checkbox" id="useK3" onchange="searchKanji()">拡張(k3)</label>
             </div>
@@ -60,18 +57,18 @@
         <div id="kanjiResultArea" class="result-area kanji-grid"></div>
     </div>
 
-    <!-- 3. 五十音表検索タブ -->
+    <!-- 3. 五十音表検索 -->
     <div id="tab-gojuon" class="tab-content">
         <p class="description">選択したマスの「形」と同じ動きをする単語を探します</p>
         <div class="gojuon-controls">
-            <button class="btn-reset" onclick="resetGojuon()">リセット</button>
+            <button class="btn-reset" onclick="resetSelection()">リセット</button>
             <div class="gojuon-options">
-                <span class="opt-title">使用する辞書:</span>
+                <span class="opt-title">辞書:</span>
                 <label class="checkbox-label"><input type="checkbox" id="useDictStandard" checked onchange="searchGojuon()">一般語</label>
                 <label class="checkbox-label"><input type="checkbox" id="useDictPig" onchange="searchGojuon()">豚辞書</label>
             </div>
             <div class="gojuon-options">
-                <span class="opt-title">形状オプション:</span>
+                <span class="opt-title">形状:</span>
                 <label class="checkbox-label"><input type="checkbox" id="allowRotation" onchange="searchGojuon()">回転OK</label>
                 <label class="checkbox-label"><input type="checkbox" id="allowReflection" onchange="searchGojuon()">反転OK</label>
             </div>
@@ -85,11 +82,11 @@
         <div id="gojuonResultArea" class="result-area"></div>
     </div>
 
-    <!-- 4. カスタム表検索タブ -->
+    <!-- 4. カスタム表検索 -->
     <div id="tab-custom" class="tab-content">
         <p class="description">自由に文字を配置して検索できます</p>
         <div class="custom-maker">
-            <textarea id="customInputText" placeholder="ここに文字を入力（例：あいうえおか... ABCDE...）"></textarea>
+            <textarea id="customInputText" placeholder="文字を入力（例：あいうえお... ABC...）"></textarea>
             <div class="custom-settings">
                 <label>列数: <input type="number" id="customCols" value="5" min="1" max="20"></label>
                 <button class="btn-create" onclick="createCustomTable()">表を作成</button>
@@ -110,7 +107,7 @@
         </div>
 
         <div class="gojuon-controls" id="gojuonControlsCustom">
-            <button class="btn-reset" onclick="resetCustom()">リセット</button>
+            <button class="btn-reset" onclick="resetSelection()">リセット</button>
             <div class="gojuon-options">
                 <span class="opt-title">辞書:</span>
                 <label class="checkbox-label"><input type="checkbox" id="useDictStandard_custom" checked onchange="searchCustom()">一般語</label>
@@ -131,34 +128,28 @@
         <div id="customResultArea" class="result-area"></div>
     </div>
 
-    <!-- 5. 解き直し検索タブ -->
+    <!-- 5. 解き直し検索 -->
     <div id="tab-redone" class="tab-content">
         <p class="description">語群内の単語ペアから文字変換を探します</p>
         <div class="search-box">
             <div style="display:flex; justify-content: center; align-items: center; gap:10px; margin-bottom:10px;">
                 <input type="text" id="redoneFrom" placeholder="変換前" style="width:80px; text-align:center;" maxlength="1">
-                <span style="font-size:20px; font-weight:bold;">→</span>
+                <span>→</span>
                 <input type="text" id="redoneTo" placeholder="変換後" style="width:80px; text-align:center;" maxlength="1">
                 <button class="tab-btn active" style="margin-left:10px;" onclick="searchRedone()">検索</button>
             </div>
             <div class="options">
-                <label class="checkbox-label">
-                    <input type="checkbox" id="matchLastChar" onchange="searchRedone()">
-                    最後の文字を対応させる
-                </label>
-                <label class="checkbox-label">
-                    <input type="checkbox" id="matchSameLength" onchange="searchRedone()">
-                    文字数が同じペアのみ
-                </label>
+                <label class="checkbox-label"><input type="checkbox" id="matchLastChar" onchange="searchRedone()">最後の文字を対応させる</label>
+                <label class="checkbox-label"><input type="checkbox" id="matchSameLength" onchange="searchRedone()">文字数が同じペアのみ</label>
             </div>
         </div>
         <div id="redoneCount" class="result-count">データを読み込み中...</div>
         <div id="redoneResultArea" class="result-area"></div>
     </div>
 
-    <!-- 6. 文字ずらしタブ -->
+    <!-- 6. 文字ずらし検索 -->
     <div id="tab-shift" class="tab-content">
-        <p class="description">入力した文字をずらしてできる単語を探します</p>
+        <p class="description">文字をずらしてできる単語を探します</p>
         <div class="search-box">
             <input type="text" id="shiftInput" placeholder="文字を入力 (例: あいさつ)" oninput="searchShift()">
             <div class="gojuon-options" style="margin-top:10px;">
@@ -175,20 +166,17 @@
         </div>
         <div id="shiftResultArea" class="result-area"></div>
     </div>
+
 </div>
 
-<!-- 詳細表示モーダル -->
 <div id="detailModal" class="modal">
-    <div class="modal-content">
-        <span class="close-btn" onclick="closeModal()">&times;</span>
-        <div id="modalBody"></div>
-    </div>
+    <div class="modal-content"><span class="close-btn" onclick="closeModal()">&times;</span><div id="modalBody"></div></div>
 </div>
 
-<!-- JSファイル群読み込み (順序重要) -->
+<!-- ★読み込み順序が重要です★ -->
 <script src="kanji_data.js"></script>
 <script src="kanji_parts.js"></script>
-<script src="word_data.js"></script> <!-- 共通データ・関数 -->
+<script src="word_data.js"></script> <!-- 共通ロジック -->
 <script src="search_word.js"></script>
 <script src="search_kanji.js"></script>
 <script src="search_gojuon.js"></script>
