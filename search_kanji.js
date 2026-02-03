@@ -1,159 +1,164 @@
 // ------------------------------------
 // パーツ自動展開ルール
-// キー: k(基本キーワード)にある文字
-// 値: { k: [...], k2: [...], k3: [...] } の形式で、自動追加したい文字を指定
+// キー: パーツの文字
+// 値: { same:[], lower1:[], lower2:[] }
+//      same   : 同じ階層に追加 (k->k, k2->k2)
+//      lower1 : 1つ下の階層に追加 (k->k2, k2->k3)
+//      lower2 : 2つ下の階層に追加 (k->k3, k2->k3)
 // ------------------------------------
 const PART_EXPANSION = {
     "田": { 
-        k: [], 
-        k2: ["ヨ", "口", "ロ", "日", "十", "コ", "干", "土"], 
-        k3: ["二", "ニ", "三", "ミ", "王", "ト", "士"] 
+        same: [], 
+        lower1: ["ヨ", "口", "ロ", "日", "十", "コ", "干", "土"], 
+        lower2: ["二", "ニ", "三", "ミ", "王", "ト", "士"] 
     },
     "言": { 
-        k: [], 
-        k2: ["口", "ロ"], 
-        k3: [ "二", "三", "ニ", "ミ"] 
+        same: ["口", "ロ"], 
+        lower1: [], 
+        lower2: [ "二", "三", "ニ", "ミ"] 
     },
     "音": { 
-        k: [], 
-        k2: ["立", "日"], 
-        k3: ["口", "ロ"] 
+        same: ["立", "日"], 
+        lower1: ["口", "ロ"], 
+        lower2: [] 
     },
     "車": { 
-        k: [], 
-        k2: ["日", "旦", "亘", "申", "口", "ロ", "田", "由", "甲", "三", "二", "ニ"], 
-        k3: ["ミ", "干", "土", "王", "ト", "士"] 
+        same: [], 
+        lower1: ["日", "旦", "亘", "申", "口", "ロ", "田", "由", "甲", "三", "二", "ニ",], 
+        lower2: ["ミ", "干", "土", "王", "ト", "士"] 
     },
     "門": { 
-        k: [], 
-        k2: [], 
-        k3: ["日", "口", "ロ", "二", "三", "ニ", "ミ"] 
+        same: [], 
+        lower1: [], 
+        lower2: ["日", "口", "ロ", "二", "三", "ニ", "ミ"] 
     },
     "口": { 
-        k: ["ロ"], 
-        k2: ["コ"], 
-        k3: [] 
+        same: ["ロ"], 
+        lower1: ["コ"], 
+        lower2: [] 
     },
     "日": { 
-        k: [], 
-        k2: ["口", "ロ", "コ", "ヨ", "ト"], 
-        k3: ["ニ", "三", "二", "ミ"] 
+        same: [], 
+        lower1: ["口", "ロ", "コ", "ヨ", "ト"], 
+        lower2: ["ニ", "三", "二", "ミ"] 
     },
     "目": { 
-        k: [], 
-        k2: [], 
-        k3: ["口", "ロ", "コ", "ヨ", "日", "ニ", "三", "二", "ミ"] 
+        same: [], 
+        lower1: [], 
+        lower2: ["口", "ロ", "コ", "ヨ", "日", "ニ", "三", "二", "ミ"] 
     },
     "貝": { 
-        k: ["目", "八", "ハ"], 
-        k2: [], 
-        k3: ["日", "口", "ロ", "コ", "ヨ", "日", "ニ", "三", "二", "ミ", "ト"] 
+        same: ["目", "八", "ハ"], 
+        lower1: [], 
+        lower2: ["日", "口", "ロ", "コ", "ヨ", "日", "ニ", "三", "二", "ミ", "ト"] 
     },
     "糸": { 
-        k: ["目", "八", "ハ"], 
-        k2: [], 
-        k3: ["日", "口", "ロ", "コ", "ヨ", "日", "ニ", "三", "二", "ミ", "ト"] 
+        same: ["目", "八", "ハ"], 
+        lower1: [], 
+        lower2: ["日", "口", "ロ", "コ", "ヨ", "日", "ニ", "三", "二", "ミ", "ト"] 
     },
     "大": { 
-        k: [], 
-        k2: ["ナ", "人"], 
-        k3: [] 
+        same: [], 
+        lower1: ["ナ", "人"], 
+        lower2: [] 
     },
     "エ": { 
-        k: ["工"], 
-        k2: [], 
-        k3: [] 
+        same: ["工"], 
+        lower1: [], 
+        lower2: [] 
     },
     "カ": { 
-        k: ["力"], 
-        k2: ["刀"], 
-        k3: [] 
+        same: ["力"], 
+        lower1: ["刀"], 
+        lower2: [] 
     },
     "タ": { 
-        k: ["夕"], 
-        k2: ["ク"], 
-        k3: [] 
+        same: ["夕"], 
+        lower1: ["ク"], 
+        lower2: [] 
     },
     "ト": { 
-        k: ["卜"], 
-        k2: [], 
-        k3: [] 
+        same: ["卜"], 
+        lower1: [], 
+        lower2: [] 
     },
     "ニ": { 
-        k: ["二"], 
-        k2: [], 
-        k3: [] 
+        same: ["二"], 
+        lower1: [], 
+        lower2: [] 
     },
     "ヌ": { 
-        k: ["又"], 
-        k2: ["フ"], 
-        k3: [] 
+        same: ["又"], 
+        lower1: ["フ"], 
+        lower2: [] 
     },
     "ハ": { 
-        k: ["八"], 
-        k2: [], 
-        k3: [] 
+        same: ["八"], 
+        lower1: [], 
+        lower2: [] 
     },
     "ミ": { 
-        k: ["三"], 
-        k2: [], 
-        k3: [] 
+        same: ["三"], 
+        lower1: [], 
+        lower2: [] 
     },
     "ロ": { 
-        k: ["口", "コ"], 
-        k2: [], 
-        k3: [] 
+        same: ["口", "コ"], 
+        lower1: [], 
+        lower2: [] 
     }
-    // 必要に応じてルールを追加してください
+    // ここにルールを追加してください
 };
 
 function expandKanjiKeywords() {
     if (typeof KANJI_DATA === 'undefined') return;
     
     KANJI_DATA.forEach(item => {
-        // エラー対策：初期化
+        // 初期化
         if (!item.k2) item.k2 = [];
         if (!item.k3) item.k3 = [];
 
-        // k に登録されているパーツを見て、自動展開ルールを適用
-        if (item.k && item.k.length > 0) {
-            const originalKeywords = [...item.k];
+        // --- レベルごとの処理関数 ---
+        const processLevel = (currentLevelKeywords, currentLevelName) => {
+            // 現在のレベルにあるキーワードを走査（追加中の変更を避けるためコピーを使用）
+            const keywords = [...currentLevelKeywords];
             
-            originalKeywords.forEach(key => {
+            keywords.forEach(key => {
                 const rule = PART_EXPANSION[key];
                 if (rule) {
-                    
-                    // パーツ追加・重複削除を行うヘルパー関数
-                    const applyRule = (parts, targetField) => {
-                        if (Array.isArray(parts)) {
-                            parts.forEach(part => {
-                                // 他のフィールドに同じパーツがあれば削除（自動登録優先）
-                                const allFields = ['k', 'k2', 'k3'];
-                                allFields.forEach(field => {
-                                    if (field !== targetField) {
-                                        if (item[field]) {
-                                            const idx = item[field].indexOf(part);
-                                            if (idx !== -1) {
-                                                item[field].splice(idx, 1);
-                                            }
-                                        }
-                                    }
-                                });
+                    // 1. same: 同じ階層に追加
+                    if (rule.same) {
+                        rule.same.forEach(p => {
+                            if (!item[currentLevelName].includes(p)) item[currentLevelName].push(p);
+                        });
+                    }
 
-                                // ターゲットに追加
-                                if (!item[targetField].includes(part)) {
-                                    item[targetField].push(part);
-                                }
-                            });
-                        }
-                    };
+                    // ターゲットレベルの決定 logic
+                    let target1 = (currentLevelName === 'k') ? 'k2' : 'k3';
+                    let target2 = 'k3'; // k の次は k2, それ以降(k2, k3)の下はすべて k3
 
-                    if (rule.k)  applyRule(rule.k, 'k');
-                    if (rule.k2) applyRule(rule.k2, 'k2');
-                    if (rule.k3) applyRule(rule.k3, 'k3');
+                    // 2. lower1: 1つ下の階層に追加
+                    if (rule.lower1) {
+                        rule.lower1.forEach(p => {
+                            if (!item[target1].includes(p)) item[target1].push(p);
+                        });
+                    }
+
+                    // 3. lower2: 2つ下の階層に追加
+                    if (rule.lower2) {
+                        rule.lower2.forEach(p => {
+                            if (!item[target2].includes(p)) item[target2].push(p);
+                        });
+                    }
                 }
             });
-        }
+        };
+
+        // 階層順に処理を実行 (k -> k2 -> k3)
+        // 上の階層から追加されたパーツが、次の階層の処理でさらに展開されるように順序を守る
+        if (item.k) processLevel(item.k, 'k');
+        if (item.k2) processLevel(item.k2, 'k2');
+        if (item.k3) processLevel(item.k3, 'k3');
     });
 }
 
@@ -235,45 +240,30 @@ function openModal(item) {
     };
 
     let similarHtml = '';
-    // 類似検索用：自分自身の全キーワードを取得
+    // 類似検索用に全キーワードを統合
     let allMyKeywords = [...(item.k || [])];
     if(item.k2) allMyKeywords = allMyKeywords.concat(item.k2);
     if(item.k3) allMyKeywords = allMyKeywords.concat(item.k3);
 
-    // ★分母にする「自分自身のパーツ総数」
-    const myTotal = allMyKeywords.length;
-
-    if (myTotal >= 1) { 
+    if (allMyKeywords.length >= 1) { 
         const similarItems = KANJI_DATA.map(otherItem => {
             if (otherItem.c === item.c) return null;
-            
-            // 相手のキーワード
             let otherKeywords = [...(otherItem.k || [])];
             if(otherItem.k2) otherKeywords = otherKeywords.concat(otherItem.k2);
             if(otherItem.k3) otherKeywords = otherKeywords.concat(otherItem.k3);
-            
             if (otherKeywords.length === 0) return null;
 
-            // 共通パーツ抽出
             const commonKeywords = otherKeywords.filter(k => allMyKeywords.includes(k));
             const commonCount = commonKeywords.length;
-            
-            // 2つ以上共通していれば候補とする
+            const totalKeywords = otherKeywords.length;
+
             if (commonCount >= 2) {
-                // ★修正: 分母を自分自身のパーツ総数にする
-                const ratio = commonCount / myTotal;
-                
-                return { 
-                    data: otherItem, 
-                    count: commonCount, 
-                    total: myTotal, // 表示用も自分の総数
-                    ratio: ratio 
-                };
+                const ratio = commonCount / totalKeywords;
+                return { data: otherItem, count: commonCount, total: totalKeywords, ratio: ratio };
             }
             return null;
         }).filter(val => val !== null);
 
-        // ソート：一致率（ratio）が高い順
         similarItems.sort((a, b) => {
             if (b.ratio !== a.ratio) return b.ratio - a.ratio;
             return b.count - a.count;
@@ -286,7 +276,7 @@ function openModal(item) {
                         <span class="similar-info">共通:${sim.count}/${sim.total}</span>
                     </div>`;
             }).join('');
-            similarHtml = `<div class="similar-section"><span class="similar-title">🔍 似ている漢字（共通数/自分のパーツ数）</span><div class="similar-list">${listHtml}</div></div>`;
+            similarHtml = `<div class="similar-section"><span class="similar-title">🔍 似ている漢字（一致率順）</span><div class="similar-list">${listHtml}</div></div>`;
         }
     }
 
