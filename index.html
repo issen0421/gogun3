@@ -92,7 +92,7 @@
         <div id="gojuonResultArea" class="result-area"></div>
     </div>
 
-    <!-- ▼▼▼ カスタム表検索タブ (修正) ▼▼▼ -->
+    <!-- カスタム表検索タブ -->
     <div id="tab-custom" class="tab-content">
         <p class="description">自由に文字を配置して検索できます</p>
         <div class="custom-maker">
@@ -109,19 +109,16 @@
                 <input type="checkbox" id="editModeCheckbox" onchange="toggleEditMode()">
                 <span class="switch-text">✏️ 配置を編集する（ドラッグ移動）</span>
             </label>
-            
-            <!-- ★追加: 行列追加ボタン（編集モード時のみ表示） -->
             <div id="layoutControls" style="display:none; gap:10px;">
                 <button class="btn-small" onclick="addCustomRow()">＋行を追加</button>
                 <button class="btn-small" onclick="addCustomCol()">＋列を追加</button>
             </div>
-
             <div id="editModeStatus" style="font-size:12px; color:#555;">
                 作成ボタンを押して表を作ってください。
             </div>
         </div>
 
-        <div id="gojuonControlsCustom" class="gojuon-controls">
+        <div class="gojuon-controls" id="gojuonControlsCustom">
             <button class="btn-reset" onclick="resetSelection()">リセット</button>
             <div class="gojuon-options">
                 <span class="opt-title">辞書:</span>
@@ -136,7 +133,6 @@
             </div>
             <div id="customSelectDisplay" class="select-display">選択: なし</div>
         </div>
-
         <div class="gojuon-wrapper">
             <canvas id="lineCanvasCustom"></canvas>
             <div id="customGrid" class="gojuon-grid custom-grid-style"></div>
@@ -181,7 +177,9 @@
     </div>
 </div>
 
+<!-- JSファイル群読み込み -->
 <script src="kanji_data.js"></script>
+<script src="kanji_parts.js"></script> <!-- ★ここに追加しました -->
 <script src="word_data.js"></script>
 <script src="search_word.js"></script>
 <script src="search_kanji.js"></script>
