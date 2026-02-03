@@ -1,3 +1,12 @@
+// レイアウト定義 (11列 x 5行, あ行を右端に)
+const GOJUON_LAYOUT = [
+    ['ん','わ','ら','や','ま','は','な','た','さ','か','あ'],
+    ['','','り','','み','ひ','に','ち','し','き','い'],
+    ['','','る','ゆ','む','ふ','ぬ','つ','す','く','う'],
+    ['','','れ','','め','へ','ね','て','せ','け','え'],
+    ['','を','ろ','よ','も','ほ','の','と','そ','こ','お']
+];
+
 async function loadAllDictionaries() {
     const statusEl = document.getElementById('txtStatus');
     if(statusEl) statusEl.innerText = "辞書読み込み中...";
@@ -31,13 +40,46 @@ async function loadAllDictionaries() {
 }
 
 function initGojuuonTable() {
-    activeLayout = GOJUON_LAYOUT; // word_data.js で定義
-    // word_data.js の initGrid を使用
-    if(typeof initGrid === 'function') {
-        initGrid('gojuonGrid', 'lineCanvasGojuon', GOJUON_LAYOUT);
-    }
+    activeLayout = GOJUON_LAYOUT;
+    initGrid('gojuonGrid', 'lineCanvasGojuon', GOJUON_LAYOUT);
 }
 
+// グリッド生成（五十音・カスタム共通初期化処理）
+function initGrid(gridId, canvasId, layout) {
+    const grid = document.getElementById(gridId);
+    if(!grid) return;
+    grid.innerHTML = "";
+    
+    const cols = layout[0].length;
+    grid.style.gridTemplateColumns = `repeat(${cols}, 40px)`;
+    grid.style.gridTemplateRows = `repeat(${layout.length}, 40px)`;
+
+    layout.forEach((row, rIndex) => {
+        row.forEach((char, cIndex) => {
+            const div = document.createElement('div');
+            div.className = char ? 'cell' : 'cell empty';
+            div.innerText = char;
+            div.dataset.r = rIndex;
+            div.dataset.c = cIndex;
+            div.dataset.char = char;
+            if (char) {
+                // word_data.js の共通関数を呼ぶ
+                div.onclick = () => onCellClick(div, rIndex, cIndex, char);
+            }
+            grid.appendChild(div);
+        });
+    });
+    
+    setTimeout(() => {
+        const canvas = document.getElementById(canvasId);
+        if(canvas) {
+            canvas.width = grid.offsetWidth;
+            canvas.height = grid.offsetHeight;
+        }
+    }, 100);
+}
+
+// 五十音表での検索（イベントハンドラから呼ばれる）
 function searchGojuon() {
     const useStd = document.getElementById('useDictStandard').checked;
     const usePig = document.getElementById('useDictPig').checked;
@@ -50,6 +92,13 @@ function searchGojuon() {
     searchByShapeCommon(selectedCells, targetWords, GOJUON_LAYOUT, 'gojuonResultArea');
 }
 
+// ユーザーがトリガーする形状変更イベント用
+function searchByShape() {
+    if(currentMode === 'gojuon') searchGojuon();
+    else if(currentMode === 'custom') searchCustom();
+}
+
+// html側の古い関数名対応（念のため）
 function resetGojuon() {
-    resetSelection(); // word_data.js の関数
+    resetSelection();
 }
