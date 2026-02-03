@@ -17,6 +17,7 @@
         <button class="tab-btn" onclick="switchTab('gojuon')">五十音表</button>
         <button class="tab-btn" onclick="switchTab('custom')">カスタム表</button>
         <button class="tab-btn" onclick="switchTab('redone')">解き直し</button>
+        <button class="tab-btn" onclick="switchTab('shift')">文字ずらし</button>
     </div>
 
     <!-- 語群検索タブ -->
@@ -166,6 +167,29 @@
 
 </div>
 
+<!-- 文字ずらし検索タブ -->
+<div id="tab-shift" class="tab-content">
+    <p class="description">文字をずらして（シーザー暗号）、辞書にある単語を探します</p>
+    <div class="search-box">
+        <input type="text" id="shiftInput" placeholder="文字を入力（例：あいうえお / ABC）" oninput="searchShift()">
+
+        <div class="options">
+            <span class="opt-title">辞書:</span>
+            <label class="checkbox-label"><input type="checkbox" id="useDictStandard_shift" checked oninput="searchShift()">一般</label>
+            <label class="checkbox-label"><input type="checkbox" id="useDictPig_shift" oninput="searchShift()">豚</label>
+            <label class="checkbox-label"><input type="checkbox" id="useDictEnglish_shift" checked oninput="searchShift()">英</label>
+        </div>
+        <div class="options">
+             <span class="opt-title">オプション:</span>
+             <label class="checkbox-label"><input type="checkbox" id="allowPlusMinus" oninput="searchShift()">±同一視</label>
+             <label class="checkbox-label"><input type="checkbox" id="allowAnagram" oninput="searchShift()">並び替え(アナグラム)</label>
+        </div>
+
+        <div id="shiftCount" class="result-count">文字を入力してください</div>
+    </div>
+    <div id="shiftResultArea" class="result-area"></div>
+</div>
+
 <!-- 詳細表示モーダル -->
 <div id="detailModal" class="modal">
     <div class="modal-content">
@@ -183,6 +207,7 @@
 <script src="search_gojuon.js"></script>
 <script src="search_custom.js"></script>
 <script src="search_redone.js"></script>
+<script src="search_shift.js"></script>
 
 </body>
 </html>
