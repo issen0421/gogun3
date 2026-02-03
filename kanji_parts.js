@@ -74,7 +74,7 @@ const PART_EXPANSION = {
     },
     "タ": { 
         same: ["夕"], 
-        lower1: ["ク"], 
+        lower1: ["ク","フ","ノ"], 
         lower2: [] 
     },
     "ト": { 
@@ -94,7 +94,7 @@ const PART_EXPANSION = {
     },
     "ハ": { 
         same: ["八"], 
-        lower1: [], 
+        lower1: ["ノ"], 
         lower2: [] 
     },
     "ミ": { 
@@ -105,6 +105,21 @@ const PART_EXPANSION = {
     "ロ": { 
         same: ["口", "コ"], 
         lower1: [], 
+        lower2: [] 
+    },
+    "立": { 
+        same: [], 
+        lower1: ["ノ"], 
+        lower2: ["ハ","八","ト","卜"] 
+    },
+    "木": { 
+        same: [], 
+        lower1: ["ノ","木"], 
+        lower2: [] 
+    },
+    "云": { 
+        same: [], 
+        lower1: ["ニ","ム","二"], 
         lower2: [] 
     }
     // ここにルールを追加してください
