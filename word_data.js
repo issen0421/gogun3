@@ -3,31 +3,44 @@ const GAS_URL_WORD = "https://script.google.com/macros/s/AKfycbwjavHiBOUOYrA_WCq
 const GAS_URL_REDONE = "https://script.google.com/macros/s/AKfycbwXDCSMakZ9lNb23ZFSSZk2fEJjLorzfIM5leiDIg_z3zsgFVn3L_59GSGkiYifElMG/exec"; 
 
 // 共有データ変数
-let appData = [];        // 語群検索用
-let redoneData = [];     // 解き直し検索用
-let dictStandard = [];   // 日本語一般語.txt
-let dictPig = [];        // 豚辞書.txt
-let dictEnglish = [];    // 英語一般語.txt
+let appData = [];        
+let redoneData = [];     
+let dictStandard = [];   
+let dictPig = [];        
+let dictEnglish = [];    
+
+// 高速化用データ (SetとMap)
+let dictSets = {
+    std: new Set(),
+    pig: new Set(),
+    eng: new Set()
+};
+let anagramMaps = {
+    std: {},
+    pig: {},
+    eng: {}
+};
 
 // モード管理
 let currentMode = 'gojuon'; 
 let activeLayout = []; 
 let selectedCells = []; 
 let customLayout = [];
+let isEditMode = false;
+let dragSrc = null;
 
 // 初期化処理
 window.onload = function() {
-    loadData();             // 語群
-    loadRedoneData();       // 解き直し
-    loadAllDictionaries();  // テキスト辞書
+    if(typeof loadData === 'function') loadData();
+    if(typeof loadRedoneData === 'function') loadRedoneData();
+    // 辞書読み込みは search_gojuon.js にある関数を使う
+    if(typeof loadAllDictionaries === 'function') loadAllDictionaries();
     
-    // 漢字検索の初期表示
     if (typeof KANJI_DATA !== 'undefined' && typeof searchKanji === 'function') {
         if(typeof expandKanjiKeywords === 'function') expandKanjiKeywords();
         searchKanji();
     }
     
-    // 五十音表の初期化
     if(typeof initGojuuonTable === 'function') {
         initGojuuonTable();
     }
@@ -52,7 +65,6 @@ function switchTab(tabName) {
     } else if (tabName === 'redone') {
         currentMode = 'redone';
     } else if (tabName === 'shift') {
-        // 文字ずらしモード（特に追加処理なし、検索はボタンor入力で行う）
         currentMode = 'shift';
     }
 }
@@ -68,7 +80,10 @@ function normalizeString(str) {
     if(!str) return "";
     let res = str.normalize('NFD').replace(/[\u3099\u309A]/g, "");
     res = res.toUpperCase();
-    const smallToLarge = { 'っ':'つ', 'ゃ':'や', 'ゅ':'ゆ', 'ょ':'よ', 'ぁ':'あ', 'ぃ':'い', 'ぅ':'う', 'ぇ':'え', 'ぉ':'お' };
+    const smallToLarge = {
+        'っ':'つ', 'ゃ':'や', 'ゅ':'ゆ', 'ょ':'よ', 'ぁ':'あ', 'ぃ':'い', 'ぅ':'う', 'ぇ':'え', 'ぉ':'お', 'ゎ':'わ',
+        'ゔ':'う', 'ゐ':'い', 'ゑ':'え'
+    };
     return res.split('').map(char => smallToLarge[char] || char).join('');
 }
 
@@ -172,7 +187,6 @@ function searchByShapeCommon(selectedCells, targetWords, layout, resultAreaId) {
             });
         }
 
-        // ベクトル比較
         for(let pat of patterns) {
             let isMatch = true;
             for(let i=0; i<pat.length; i++) {
