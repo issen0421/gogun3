@@ -24,7 +24,7 @@ const PART_EXPANSION = {
     },
     "車": { 
         same: [], 
-        lower1: ["日", "旦", "亘", "申", "口", "ロ", "田", "由", "甲", "三", "二", "ニ",], 
+        lower1: ["日", "旦", "亘", "申", "口", "ロ", "田", "由", "甲", "三", "二", "ニ"], 
         lower2: ["ミ", "干", "土", "王", "ト", "士"] 
     },
     "門": { 
@@ -107,58 +107,79 @@ const PART_EXPANSION = {
         lower1: [], 
         lower2: [] 
     }
-    // ここにルールを追加してください
+    // 必要に応じてルールを追加してください
 };
 
 function expandKanjiKeywords() {
     if (typeof KANJI_DATA === 'undefined') return;
     
     KANJI_DATA.forEach(item => {
-        // 初期化
+        // 初期化（undefined対策）
         if (!item.k2) item.k2 = [];
         if (!item.k3) item.k3 = [];
 
-        // --- レベルごとの処理関数 ---
-        const processLevel = (currentLevelKeywords, currentLevelName) => {
-            // 現在のレベルにあるキーワードを走査（追加中の変更を避けるためコピーを使用）
-            const keywords = [...currentLevelKeywords];
-            
-            keywords.forEach(key => {
+        // 自動追加するパーツを一時的に格納するセット
+        const autoAdd = {
+            k: new Set(),
+            k2: new Set(),
+            k3: new Set()
+        };
+
+        // --- 1. ルールに基づいて追加候補を計算 ---
+        const processLevel = (currentKeywords, currentLevel) => {
+            currentKeywords.forEach(key => {
                 const rule = PART_EXPANSION[key];
                 if (rule) {
-                    // 1. same: 同じ階層に追加
+                    // same: 同じ階層へ
                     if (rule.same) {
-                        rule.same.forEach(p => {
-                            if (!item[currentLevelName].includes(p)) item[currentLevelName].push(p);
-                        });
+                        rule.same.forEach(p => autoAdd[currentLevel].add(p));
                     }
 
-                    // ターゲットレベルの決定 logic
-                    let target1 = (currentLevelName === 'k') ? 'k2' : 'k3';
-                    let target2 = 'k3'; // k の次は k2, それ以降(k2, k3)の下はすべて k3
+                    // lower1: 1つ下の階層へ
+                    let targetLower1 = 'k3';
+                    if (currentLevel === 'k') targetLower1 = 'k2';
+                    else if (currentLevel === 'k2') targetLower1 = 'k3';
+                    // k3の場合はk3のまま
 
-                    // 2. lower1: 1つ下の階層に追加
                     if (rule.lower1) {
-                        rule.lower1.forEach(p => {
-                            if (!item[target1].includes(p)) item[target1].push(p);
-                        });
+                        rule.lower1.forEach(p => autoAdd[targetLower1].add(p));
                     }
 
-                    // 3. lower2: 2つ下の階層に追加
+                    // lower2: 2つ下の階層へ
+                    let targetLower2 = 'k3';
+                    // k -> k3, それ以外は k3 (これ以上下はないため)
+                    
                     if (rule.lower2) {
-                        rule.lower2.forEach(p => {
-                            if (!item[target2].includes(p)) item[target2].push(p);
-                        });
+                        rule.lower2.forEach(p => autoAdd[targetLower2].add(p));
                     }
                 }
             });
         };
 
-        // 階層順に処理を実行 (k -> k2 -> k3)
-        // 上の階層から追加されたパーツが、次の階層の処理でさらに展開されるように順序を守る
+        // 各階層にある既存のキーワードを使って展開計算
         if (item.k) processLevel(item.k, 'k');
         if (item.k2) processLevel(item.k2, 'k2');
         if (item.k3) processLevel(item.k3, 'k3');
+
+        // --- 2. 重複削除と統合 (自動登録優先) ---
+        // 自動登録されるパーツが、既に手動で(あるいは別の場所で)登録されていたら消す
+        
+        ['k', 'k2', 'k3'].forEach(targetField => {
+            const partsToAdd = Array.from(autoAdd[targetField]);
+            
+            partsToAdd.forEach(part => {
+                // 他のすべてのフィールドからこのパーツを削除
+                ['k', 'k2', 'k3'].forEach(field => {
+                    const idx = item[field].indexOf(part);
+                    if (idx !== -1) {
+                        item[field].splice(idx, 1);
+                    }
+                });
+
+                // ターゲットフィールドに追加
+                item[targetField].push(part);
+            });
+        });
     });
 }
 
