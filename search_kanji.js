@@ -3,70 +3,44 @@
 function expandKanjiKeywords() {
     if (typeof KANJI_DATA === 'undefined') return;
     if (typeof PART_EXPANSION === 'undefined') {
-        console.warn("PART_EXPANSION is not defined. Skipping expansion.");
+        console.warn("PART_EXPANSION is not defined.");
         return;
     }
     
     KANJI_DATA.forEach(item => {
-        // 初期化
         if (!item.k2) item.k2 = [];
         if (!item.k3) item.k3 = [];
 
         // 自動追加するパーツを一時的に格納するセット
-        const autoAdd = {
-            k: new Set(),
-            k2: new Set(),
-            k3: new Set()
-        };
+        const autoAdd = { k: new Set(), k2: new Set(), k3: new Set() };
 
-        // --- 1. ルールに基づいて追加候補を計算 ---
         const processLevel = (currentKeywords, currentLevel) => {
             currentKeywords.forEach(key => {
                 const rule = PART_EXPANSION[key];
                 if (rule) {
-                    // same: 同じ階層へ
-                    if (rule.same) {
-                        rule.same.forEach(p => autoAdd[currentLevel].add(p));
-                    }
+                    if (rule.same) rule.same.forEach(p => autoAdd[currentLevel].add(p));
 
-                    // lower1: 1つ下の階層へ
-                    let targetLower1 = 'k3';
-                    if (currentLevel === 'k') targetLower1 = 'k2';
-                    else if (currentLevel === 'k2') targetLower1 = 'k3';
-                    
-                    if (rule.lower1) {
-                        rule.lower1.forEach(p => autoAdd[targetLower1].add(p));
-                    }
+                    let target1 = (currentLevel === 'k') ? 'k2' : 'k3';
+                    if (rule.lower1) rule.lower1.forEach(p => autoAdd[target1].add(p));
 
-                    // lower2: 2つ下の階層へ (k -> k3)
-                    let targetLower2 = 'k3';
-                    
-                    if (rule.lower2) {
-                        rule.lower2.forEach(p => autoAdd[targetLower2].add(p));
-                    }
+                    let target2 = 'k3';
+                    if (rule.lower2) rule.lower2.forEach(p => autoAdd[target2].add(p));
                 }
             });
         };
 
-        // 各階層にある既存のキーワードを使って展開計算
         if (item.k) processLevel(item.k, 'k');
         if (item.k2) processLevel(item.k2, 'k2');
         if (item.k3) processLevel(item.k3, 'k3');
 
-        // --- 2. 重複削除と統合 (自動登録優先) ---
+        // 重複削除と統合 (自動登録優先)
         ['k', 'k2', 'k3'].forEach(targetField => {
             const partsToAdd = Array.from(autoAdd[targetField]);
-            
             partsToAdd.forEach(part => {
-                // 他のすべてのフィールドからこのパーツを削除
                 ['k', 'k2', 'k3'].forEach(field => {
                     const idx = item[field].indexOf(part);
-                    if (idx !== -1) {
-                        item[field].splice(idx, 1);
-                    }
+                    if (idx !== -1) item[field].splice(idx, 1);
                 });
-
-                // ターゲットフィールドに追加
                 item[targetField].push(part);
             });
         });
@@ -74,15 +48,20 @@ function expandKanjiKeywords() {
 }
 
 function searchKanji() {
-    const rawInput = document.getElementById('kanjiInput').value.trim();
+    // 画面の入力値を取得
+    const rawInputEl = document.getElementById('kanjiInput');
+    const rawInput = rawInputEl ? rawInputEl.value.trim() : "";
     const searchInput = rawInput; 
 
-    const sortOption = document.getElementById('sortOption').value;
-    const useK2 = document.getElementById('useK2').checked;
-    const useK3 = document.getElementById('useK3').checked;
+    // 各種オプション取得
+    const sortOption = document.getElementById('sortOption') ? document.getElementById('sortOption').value : "grade_asc";
+    const useK2 = document.getElementById('useK2') ? document.getElementById('useK2').checked : false;
+    const useK3 = document.getElementById('useK3') ? document.getElementById('useK3').checked : false;
+    
     const resultArea = document.getElementById('kanjiResultArea');
     const countEl = document.getElementById('kanjiCount');
 
+    if (!resultArea) return;
     resultArea.innerHTML = "";
 
     if (typeof KANJI_DATA === 'undefined') {
@@ -96,7 +75,6 @@ function searchKanji() {
         const inputChars = searchInput.split('');
 
         filteredData = KANJI_DATA.filter(item => {
-            // 検索対象キーワードの結合
             let keywords = [...(item.k || [])];
             if (useK2 && item.k2) keywords = keywords.concat(item.k2);
             if (useK3 && item.k3) keywords = keywords.concat(item.k3);
@@ -108,7 +86,9 @@ function searchKanji() {
             });
         });
     }
+    // ★空欄の場合は全件表示される（フィルタリングされない）
 
+    // ソート
     filteredData.sort((a, b) => {
         if (sortOption === "grade_asc") return a.g - b.g;
         if (sortOption === "grade_desc") return b.g - a.g;
@@ -117,7 +97,7 @@ function searchKanji() {
         return 0;
     });
 
-    countEl.innerText = `ヒット: ${filteredData.length}件`;
+    if(countEl) countEl.innerText = `ヒット: ${filteredData.length}件`;
 
     filteredData.forEach(item => {
         const card = document.createElement('div');
@@ -139,6 +119,11 @@ function searchKanji() {
     }
 }
 
+// ... openModal, searchByTag, openModalByChar, closeModal は word_data.js に移動したいが、
+// search_kanji.js 内で完結しているため、ここにあっても問題はない。
+// ただし、もし他から呼ばれるなら重複に注意。
+// 今回は前回の構成通りここに残します。
+
 function openModal(item) {
     const modal = document.getElementById('detailModal');
     if (!modal) return;
@@ -151,45 +136,30 @@ function openModal(item) {
     };
 
     let similarHtml = '';
-    // 類似検索用に全キーワードを統合
     let allMyKeywords = [...(item.k || [])];
     if(item.k2) allMyKeywords = allMyKeywords.concat(item.k2);
     if(item.k3) allMyKeywords = allMyKeywords.concat(item.k3);
 
-    // ★分母にする「自分自身のパーツ総数」
     const myTotal = allMyKeywords.length;
 
     if (myTotal >= 1) { 
         const similarItems = KANJI_DATA.map(otherItem => {
             if (otherItem.c === item.c) return null;
-            
-            // 相手のキーワード
             let otherKeywords = [...(otherItem.k || [])];
             if(otherItem.k2) otherKeywords = otherKeywords.concat(otherItem.k2);
             if(otherItem.k3) otherKeywords = otherKeywords.concat(otherItem.k3);
-            
             if (otherKeywords.length === 0) return null;
 
-            // 共通パーツ抽出
             const commonKeywords = otherKeywords.filter(k => allMyKeywords.includes(k));
             const commonCount = commonKeywords.length;
             
-            // 2つ以上共通していれば候補とする
             if (commonCount >= 2) {
-                // 一致率（網羅率）
                 const ratio = commonCount / myTotal;
-                
-                return { 
-                    data: otherItem, 
-                    count: commonCount, 
-                    total: myTotal, 
-                    ratio: ratio 
-                };
+                return { data: otherItem, count: commonCount, total: myTotal, ratio: ratio };
             }
             return null;
         }).filter(val => val !== null);
 
-        // ソート：一致率（ratio）が高い順
         similarItems.sort((a, b) => {
             if (b.ratio !== a.ratio) return b.ratio - a.ratio;
             return b.count - a.count;
@@ -224,7 +194,6 @@ function searchByTag(tag) {
     if (modal) modal.style.display = "none";
     document.getElementById('kanjiInput').value = tag;
     
-    // タグ検索時はチェックボックスをONにする
     if(document.getElementById('useK2')) document.getElementById('useK2').checked = true;
     if(document.getElementById('useK3')) document.getElementById('useK3').checked = true;
 
