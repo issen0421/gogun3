@@ -9,10 +9,6 @@ var dictStandard = [];
 var dictPig = [];        
 var dictEnglish = [];    
 
-// 高速化用データ
-var dictSets = { std: new Set(), pig: new Set(), eng: new Set() };
-var anagramMaps = { std: {}, pig: {}, eng: {} };
-
 // モード管理
 var currentMode = 'gojuon'; 
 var activeLayout = []; 
@@ -124,6 +120,7 @@ function drawLinesCommon() {
             const gridRect = grid.getBoundingClientRect();
             const x = rect.left - gridRect.left + rect.width / 2;
             const y = rect.top - gridRect.top + rect.height / 2;
+
             if (index === 0) ctx.moveTo(x, y);
             else ctx.lineTo(x, y);
         }
@@ -131,7 +128,7 @@ function drawLinesCommon() {
     ctx.stroke();
 }
 
-// 共通検索ロジック: 形状検索
+// 共通検索ロジック
 function searchByShapeCommon(selectedCells, targetWords, layout, resultAreaId) {
     const resultArea = document.getElementById(resultAreaId);
     if(!resultArea) return;
@@ -237,16 +234,4 @@ function getCoordCommon(char, layout) {
         }
     }
     return null;
-}
-
-// 辞書インデックス構築
-function buildSearchIndex(key, words) {
-    dictSets[key] = new Set(words);
-    anagramMaps[key] = {};
-    words.forEach(word => {
-        const normalized = normalizeString(word);
-        const sorted = normalized.split('').sort().join('');
-        if (!anagramMaps[key][sorted]) anagramMaps[key][sorted] = [];
-        anagramMaps[key][sorted].push(word);
-    });
 }
