@@ -1,164 +1,75 @@
-// ------------------------------------
-// パーツ自動展開ルール
-// キー: パーツの文字
-// 値: { same:[], lower1:[], lower2:[] }
-//      same   : 同じ階層に追加 (k->k, k2->k2)
-//      lower1 : 1つ下の階層に追加 (k->k2, k2->k3)
-//      lower2 : 2つ下の階層に追加 (k->k3, k2->k3)
-// ------------------------------------
-const PART_EXPANSION = {
-    "田": { 
-        same: [], 
-        lower1: ["ヨ", "口", "ロ", "日", "十", "コ", "干", "土"], 
-        lower2: ["二", "ニ", "三", "ミ", "王", "ト", "士"] 
-    },
-    "言": { 
-        same: ["口", "ロ"], 
-        lower1: [], 
-        lower2: [ "二", "三", "ニ", "ミ"] 
-    },
-    "音": { 
-        same: ["立", "日"], 
-        lower1: ["口", "ロ"], 
-        lower2: [] 
-    },
-    "車": { 
-        same: [], 
-        lower1: ["日", "旦", "亘", "申", "口", "ロ", "田", "由", "甲", "三", "二", "ニ",], 
-        lower2: ["ミ", "干", "土", "王", "ト", "士"] 
-    },
-    "門": { 
-        same: [], 
-        lower1: [], 
-        lower2: ["日", "口", "ロ", "二", "三", "ニ", "ミ"] 
-    },
-    "口": { 
-        same: ["ロ"], 
-        lower1: ["コ"], 
-        lower2: [] 
-    },
-    "日": { 
-        same: [], 
-        lower1: ["口", "ロ", "コ", "ヨ", "ト"], 
-        lower2: ["ニ", "三", "二", "ミ"] 
-    },
-    "目": { 
-        same: [], 
-        lower1: [], 
-        lower2: ["口", "ロ", "コ", "ヨ", "日", "ニ", "三", "二", "ミ"] 
-    },
-    "貝": { 
-        same: ["目", "八", "ハ"], 
-        lower1: [], 
-        lower2: ["日", "口", "ロ", "コ", "ヨ", "日", "ニ", "三", "二", "ミ", "ト"] 
-    },
-    "糸": { 
-        same: ["目", "八", "ハ"], 
-        lower1: [], 
-        lower2: ["日", "口", "ロ", "コ", "ヨ", "日", "ニ", "三", "二", "ミ", "ト"] 
-    },
-    "大": { 
-        same: [], 
-        lower1: ["ナ", "人"], 
-        lower2: [] 
-    },
-    "エ": { 
-        same: ["工"], 
-        lower1: [], 
-        lower2: [] 
-    },
-    "カ": { 
-        same: ["力"], 
-        lower1: ["刀"], 
-        lower2: [] 
-    },
-    "タ": { 
-        same: ["夕"], 
-        lower1: ["ク"], 
-        lower2: [] 
-    },
-    "ト": { 
-        same: ["卜"], 
-        lower1: [], 
-        lower2: [] 
-    },
-    "ニ": { 
-        same: ["二"], 
-        lower1: [], 
-        lower2: [] 
-    },
-    "ヌ": { 
-        same: ["又"], 
-        lower1: ["フ"], 
-        lower2: [] 
-    },
-    "ハ": { 
-        same: ["八"], 
-        lower1: [], 
-        lower2: [] 
-    },
-    "ミ": { 
-        same: ["三"], 
-        lower1: [], 
-        lower2: [] 
-    },
-    "ロ": { 
-        same: ["口", "コ"], 
-        lower1: [], 
-        lower2: [] 
-    }
-    // ここにルールを追加してください
-};
+// 自動展開ルール PART_EXPANSION は kanji_parts.js で定義されています。
 
 function expandKanjiKeywords() {
     if (typeof KANJI_DATA === 'undefined') return;
+    if (typeof PART_EXPANSION === 'undefined') {
+        console.warn("PART_EXPANSION is not defined. Skipping expansion.");
+        return;
+    }
     
     KANJI_DATA.forEach(item => {
         // 初期化
         if (!item.k2) item.k2 = [];
         if (!item.k3) item.k3 = [];
 
-        // --- レベルごとの処理関数 ---
-        const processLevel = (currentLevelKeywords, currentLevelName) => {
-            // 現在のレベルにあるキーワードを走査（追加中の変更を避けるためコピーを使用）
-            const keywords = [...currentLevelKeywords];
-            
-            keywords.forEach(key => {
+        // 自動追加するパーツを一時的に格納するセット
+        const autoAdd = {
+            k: new Set(),
+            k2: new Set(),
+            k3: new Set()
+        };
+
+        // --- 1. ルールに基づいて追加候補を計算 ---
+        const processLevel = (currentKeywords, currentLevel) => {
+            currentKeywords.forEach(key => {
                 const rule = PART_EXPANSION[key];
                 if (rule) {
-                    // 1. same: 同じ階層に追加
+                    // same: 同じ階層へ
                     if (rule.same) {
-                        rule.same.forEach(p => {
-                            if (!item[currentLevelName].includes(p)) item[currentLevelName].push(p);
-                        });
+                        rule.same.forEach(p => autoAdd[currentLevel].add(p));
                     }
 
-                    // ターゲットレベルの決定 logic
-                    let target1 = (currentLevelName === 'k') ? 'k2' : 'k3';
-                    let target2 = 'k3'; // k の次は k2, それ以降(k2, k3)の下はすべて k3
-
-                    // 2. lower1: 1つ下の階層に追加
+                    // lower1: 1つ下の階層へ
+                    let targetLower1 = 'k3';
+                    if (currentLevel === 'k') targetLower1 = 'k2';
+                    else if (currentLevel === 'k2') targetLower1 = 'k3';
+                    
                     if (rule.lower1) {
-                        rule.lower1.forEach(p => {
-                            if (!item[target1].includes(p)) item[target1].push(p);
-                        });
+                        rule.lower1.forEach(p => autoAdd[targetLower1].add(p));
                     }
 
-                    // 3. lower2: 2つ下の階層に追加
+                    // lower2: 2つ下の階層へ (k -> k3)
+                    let targetLower2 = 'k3';
+                    
                     if (rule.lower2) {
-                        rule.lower2.forEach(p => {
-                            if (!item[target2].includes(p)) item[target2].push(p);
-                        });
+                        rule.lower2.forEach(p => autoAdd[targetLower2].add(p));
                     }
                 }
             });
         };
 
-        // 階層順に処理を実行 (k -> k2 -> k3)
-        // 上の階層から追加されたパーツが、次の階層の処理でさらに展開されるように順序を守る
+        // 各階層にある既存のキーワードを使って展開計算
         if (item.k) processLevel(item.k, 'k');
         if (item.k2) processLevel(item.k2, 'k2');
         if (item.k3) processLevel(item.k3, 'k3');
+
+        // --- 2. 重複削除と統合 (自動登録優先) ---
+        ['k', 'k2', 'k3'].forEach(targetField => {
+            const partsToAdd = Array.from(autoAdd[targetField]);
+            
+            partsToAdd.forEach(part => {
+                // 他のすべてのフィールドからこのパーツを削除
+                ['k', 'k2', 'k3'].forEach(field => {
+                    const idx = item[field].indexOf(part);
+                    if (idx !== -1) {
+                        item[field].splice(idx, 1);
+                    }
+                });
+
+                // ターゲットフィールドに追加
+                item[targetField].push(part);
+            });
+        });
     });
 }
 
@@ -245,25 +156,40 @@ function openModal(item) {
     if(item.k2) allMyKeywords = allMyKeywords.concat(item.k2);
     if(item.k3) allMyKeywords = allMyKeywords.concat(item.k3);
 
-    if (allMyKeywords.length >= 1) { 
+    // ★分母にする「自分自身のパーツ総数」
+    const myTotal = allMyKeywords.length;
+
+    if (myTotal >= 1) { 
         const similarItems = KANJI_DATA.map(otherItem => {
             if (otherItem.c === item.c) return null;
+            
+            // 相手のキーワード
             let otherKeywords = [...(otherItem.k || [])];
             if(otherItem.k2) otherKeywords = otherKeywords.concat(otherItem.k2);
             if(otherItem.k3) otherKeywords = otherKeywords.concat(otherItem.k3);
+            
             if (otherKeywords.length === 0) return null;
 
+            // 共通パーツ抽出
             const commonKeywords = otherKeywords.filter(k => allMyKeywords.includes(k));
             const commonCount = commonKeywords.length;
-            const totalKeywords = otherKeywords.length;
-
+            
+            // 2つ以上共通していれば候補とする
             if (commonCount >= 2) {
-                const ratio = commonCount / totalKeywords;
-                return { data: otherItem, count: commonCount, total: totalKeywords, ratio: ratio };
+                // 一致率（網羅率）
+                const ratio = commonCount / myTotal;
+                
+                return { 
+                    data: otherItem, 
+                    count: commonCount, 
+                    total: myTotal, 
+                    ratio: ratio 
+                };
             }
             return null;
         }).filter(val => val !== null);
 
+        // ソート：一致率（ratio）が高い順
         similarItems.sort((a, b) => {
             if (b.ratio !== a.ratio) return b.ratio - a.ratio;
             return b.count - a.count;
@@ -276,7 +202,7 @@ function openModal(item) {
                         <span class="similar-info">共通:${sim.count}/${sim.total}</span>
                     </div>`;
             }).join('');
-            similarHtml = `<div class="similar-section"><span class="similar-title">🔍 似ている漢字（一致率順）</span><div class="similar-list">${listHtml}</div></div>`;
+            similarHtml = `<div class="similar-section"><span class="similar-title">🔍 似ている漢字（共通数/自分のパーツ数）</span><div class="similar-list">${listHtml}</div></div>`;
         }
     }
 
