@@ -158,39 +158,23 @@
 
     <!-- 6. 文字ずらしタブ -->
     <div id="tab-shift" class="tab-content">
-        <p class="description">
-            入力した文字をずらしてできる単語を探します<br>
-            <small>五十音: あ〜ん (46文字) / アルファベット: A〜Z (26文字)</small>
-        </p>
-        
+        <p class="description">入力した文字をずらしてできる単語を探します</p>
         <div class="search-box">
             <input type="text" id="shiftInput" placeholder="文字を入力 (例: あいさつ)" oninput="searchShift()">
-            
             <div class="gojuon-options" style="margin-top:10px;">
                 <span class="opt-title">辞書:</span>
                 <label class="checkbox-label"><input type="checkbox" id="useDictStandard_shift" checked onchange="searchShift()">一般語</label>
                 <label class="checkbox-label"><input type="checkbox" id="useDictPig_shift" onchange="searchShift()">豚辞書</label>
                 <label class="checkbox-label"><input type="checkbox" id="useDictEnglish_shift" checked onchange="searchShift()">英語</label>
             </div>
-
             <div class="options">
-                <label class="checkbox-label">
-                    <input type="checkbox" id="allowAnagram" onchange="searchShift()">
-                    並び替えを許す（アナグラム）
-                </label>
-                <!-- ★追加: ±同一視 -->
-                <label class="checkbox-label">
-                    <input type="checkbox" id="allowPlusMinus" onchange="searchShift()">
-                    ±を同一視する（文字ごとに+Nか-N）
-                </label>
+                <label class="checkbox-label"><input type="checkbox" id="allowAnagram" onchange="searchShift()">並び替えを許す（アナグラム）</label>
+                <label class="checkbox-label"><input type="checkbox" id="allowPlusMinus" onchange="searchShift()">±を同一視する</label>
             </div>
-            
             <div id="shiftCount" class="result-count">文字を入力してください</div>
         </div>
-        
         <div id="shiftResultArea" class="result-area"></div>
     </div>
-
 </div>
 
 <!-- 詳細表示モーダル -->
@@ -201,10 +185,10 @@
     </div>
 </div>
 
-<!-- JSファイル群読み込み -->
+<!-- JSファイル群読み込み (順序重要) -->
 <script src="kanji_data.js"></script>
 <script src="kanji_parts.js"></script>
-<script src="word_data.js"></script>
+<script src="word_data.js"></script> <!-- 共通データ・関数 -->
 <script src="search_word.js"></script>
 <script src="search_kanji.js"></script>
 <script src="search_gojuon.js"></script>
