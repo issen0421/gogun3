@@ -20,186 +20,39 @@
         <button class="tab-btn" onclick="switchTab('custom')">カスタム表</button>
         <button class="tab-btn" onclick="switchTab('redone')">解き直し</button>
         <button class="tab-btn" onclick="switchTab('shift')">文字ずらし</button>
+        <!-- ★追加 -->
+        <button class="tab-btn" onclick="switchTab('shift2')">文字ずらし2</button>
     </div>
 
-    <!-- 語群検索タブ -->
-    <div id="tab-word" class="tab-content active">
-        <p class="description">スプレッドシート(語群用)連動版</p>
-        <div class="search-box">
-            <input type="text" id="searchInput" placeholder="ひらがなorアルファベットを入力" oninput="searchWords()">
-            <div class="options">
-                <label class="checkbox-label">
-                    <input type="checkbox" id="looseMode" onchange="searchWords()">
-                    濁音・半濁音・拗音を区別しない
-                </label>
-            </div>
-            <div id="resultCount" class="result-count">データを読み込み中...</div>
-        </div>
-        <div id="resultArea" class="result-area"></div>
-    </div>
+    <!-- (中略: 他のタブのコードはそのまま) -->
 
-    <!-- 漢字検索タブ -->
-    <div id="tab-kanji" class="tab-content">
-        <p class="description">小学校で習う漢字（1026字）の検索</p>
-        <div class="search-box">
-            <input type="text" id="kanjiInput" placeholder="部首や漢字を入力（例：言、心）" oninput="searchKanji()">
-            <div class="options">
-                <span style="font-size:12px; font-weight:bold; color:#555; margin-right:5px;">検索対象:</span>
-                <label class="checkbox-label">
-                    <input type="checkbox" id="useK2" onchange="searchKanji()">
-                    拡張(k2)
-                </label>
-                <label class="checkbox-label">
-                    <input type="checkbox" id="useK3" onchange="searchKanji()">
-                    拡張(k3)
-                </label>
-            </div>
-            <div class="sort-options">
-                <span>並び替え:</span>
-                <select id="sortOption" onchange="searchKanji()">
-                    <option value="grade_asc">学年順 (低→高)</option>
-                    <option value="grade_desc">学年順 (高→低)</option>
-                    <option value="stroke_asc">画数順 (少→多)</option>
-                    <option value="stroke_desc">画数順 (多→少)</option>
-                </select>
-            </div>
-            <div id="kanjiCount" class="result-count">全1026字から検索</div>
-        </div>
-        <div id="kanjiResultArea" class="result-area kanji-grid"></div>
-    </div>
-
-    <!-- 五十音表検索タブ -->
-    <div id="tab-gojuon" class="tab-content">
+    <!-- ★追加: 文字ずらし2 検索タブ -->
+    <div id="tab-shift2" class="tab-content">
         <p class="description">
-            選択したマスの「形」と同じ動きをする単語を探します
-        </p>
-        <div class="gojuon-controls">
-            <button class="btn-reset" onclick="resetSelection()">リセット</button>
-            <div class="gojuon-options">
-                <span class="opt-title">使用する辞書:</span>
-                <label class="checkbox-label"><input type="checkbox" id="useDictStandard" checked onchange="searchByShape()">一般語</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictPig" onchange="searchByShape()">豚辞書</label>
-                <!-- ★追加: イラスト辞書 -->
-                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv1" onchange="searchByShape()">イラストLv.1</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv2" onchange="searchByShape()">イラストLv.2</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv3" onchange="searchByShape()">イラストLv.3</label>
-            </div>
-            <div class="gojuon-options">
-                <span class="opt-title">形状オプション:</span>
-                <label class="checkbox-label"><input type="checkbox" id="allowRotation" onchange="searchByShape()">回転OK</label>
-                <label class="checkbox-label"><input type="checkbox" id="allowReflection" onchange="searchByShape()">反転OK</label>
-            </div>
-            <div id="gojuonSelectDisplay" class="select-display">選択: なし</div>
-        </div>
-        <div class="gojuon-wrapper">
-            <canvas id="lineCanvasGojuon"></canvas>
-            <div id="gojuonGrid" class="gojuon-grid"></div>
-        </div>
-        <div id="txtStatus" class="result-count">辞書ファイルを読み込み中...</div>
-        <div id="gojuonResultArea" class="result-area"></div>
-    </div>
-
-    <!-- カスタム表検索タブ -->
-    <div id="tab-custom" class="tab-content">
-        <p class="description">自由に文字を配置して検索できます</p>
-        <div class="custom-maker">
-            <textarea id="customInputText" placeholder="ここに文字を入力（例：あいうえおか... ABCDE...）"></textarea>
-            <div class="custom-settings">
-                <label>列数: <input type="number" id="customCols" value="5" min="1" max="20"></label>
-                <button class="btn-create" onclick="createCustomTable()">表を作成</button>
-            </div>
-        </div>
-        
-        <!-- 編集モード切替スイッチ -->
-        <div style="margin-bottom: 10px;">
-            <label class="edit-switch-label">
-                <input type="checkbox" id="editModeCheckbox" onchange="toggleEditMode()">
-                <span class="switch-text">✏️ 配置を編集する（ドラッグ移動）</span>
-            </label>
-            <div id="editModeStatus" style="font-size:12px; margin-top:5px; color:#555;">
-                作成ボタンを押して表を作ってください。
-            </div>
-        </div>
-
-        <div id="gojuonControlsCustom" class="gojuon-controls">
-            <button class="btn-reset" onclick="resetSelection()">リセット</button>
-            <div class="gojuon-options">
-                <span class="opt-title">辞書:</span>
-                <label class="checkbox-label"><input type="checkbox" id="useDictStandard_custom" checked onchange="searchByShape()">一般語</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictPig_custom" onchange="searchByShape()">豚辞書</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictEnglish_custom" checked onchange="searchByShape()">英語</label>
-                <!-- ★追加: イラスト辞書 -->
-                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv1_custom" onchange="searchByShape()">イラストLv.1</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv2_custom" onchange="searchByShape()">イラストLv.2</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv3_custom" onchange="searchByShape()">イラストLv.3</label>
-            </div>
-            <div class="gojuon-options">
-                <span class="opt-title">形状:</span>
-                <label class="checkbox-label"><input type="checkbox" id="allowRotation_custom" onchange="searchByShape()">回転OK</label>
-                <label class="checkbox-label"><input type="checkbox" id="allowReflection_custom" onchange="searchByShape()">反転OK</label>
-            </div>
-            <div id="customSelectDisplay" class="select-display">選択: なし</div>
-        </div>
-
-        <div class="gojuon-wrapper">
-            <canvas id="lineCanvasCustom"></canvas>
-            <div id="customGrid" class="gojuon-grid custom-grid-style"></div>
-        </div>
-        <div id="customResultArea" class="result-area"></div>
-    </div>
-
-    <!-- 解き直し検索タブ -->
-    <div id="tab-redone" class="tab-content">
-        <p class="description">
-            スプレッドシート(解き直し用)内の単語ペアから文字変換を探します
+            「1文字目を+1、2文字目を-3...」のように文字ごとにずらし数を指定し、<br>
+            その法則で変換できる単語ペア（辞書にある単語同士）を探します。
         </p>
         <div class="search-box">
-            <div style="display:flex; justify-content: center; align-items: center; gap:10px; margin-bottom:10px;">
-                <input type="text" id="redoneFrom" placeholder="変換前" style="width:80px; text-align:center;" maxlength="1">
-                <span style="font-size:20px; font-weight:bold;">→</span>
-                <input type="text" id="redoneTo" placeholder="変換後" style="width:80px; text-align:center;" maxlength="1">
-                <button class="tab-btn active" style="margin-left:10px;" onclick="searchRedone()">検索</button>
+            <div style="margin-bottom:10px; font-weight:bold; color:#555;">ずらし数を入力 (スペース区切り)</div>
+            <input type="text" id="shift2Input" placeholder="例: 1 -2 3 （3文字の単語を探します）" oninput="searchShift2()">
+            <div style="font-size:12px; color:#888; margin-top:5px;">
+                ※ 数字の個数が、探す単語の文字数になります。
             </div>
-            <div class="options">
-                <label class="checkbox-label">
-                    <input type="checkbox" id="matchLastChar" onchange="searchRedone()">
-                    最後の文字を対応させる
-                </label>
-                <label class="checkbox-label">
-                    <input type="checkbox" id="matchSameLength" onchange="searchRedone()">
-                    文字数が同じペアのみ
-                </label>
-            </div>
-        </div>
-        <div id="redoneCount" class="result-count">データを読み込み中...</div>
-        <div id="redoneResultArea" class="result-area"></div>
-    </div>
 
-    <!-- 文字ずらし検索タブ -->
-    <div id="tab-shift" class="tab-content">
-        <p class="description">文字をずらして（シーザー暗号）、辞書にある単語を探します</p>
-        <div class="search-box">
-            <input type="text" id="shiftInput" placeholder="文字を入力（例：あいうえお / ABC）" oninput="searchShift()">
-            
             <div class="options">
                 <span class="opt-title">辞書:</span>
-                <label class="checkbox-label"><input type="checkbox" id="useDictStandard_shift" checked oninput="searchShift()">一般語</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictPig_shift" oninput="searchShift()">豚辞書</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictEnglish_shift" checked oninput="searchShift()">英語</label>
-                <!-- ★追加: イラスト辞書 -->
-                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv1_shift" oninput="searchShift()">イラストLv.1</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv2_shift" oninput="searchShift()">イラストLv.2</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv3_shift" oninput="searchShift()">イラストLv.3</label>
-            </div>
-            <div class="options">
-                 <span class="opt-title">オプション:</span>
-                 <label class="checkbox-label"><input type="checkbox" id="allowPlusMinus" oninput="searchShift()">±同一視</label>
-                 <label class="checkbox-label"><input type="checkbox" id="allowAnagram" oninput="searchShift()">並び替え(アナグラム)</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictStandard_shift2" checked onchange="searchShift2()">一般</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictPig_shift2" onchange="searchShift2()">豚</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictEnglish_shift2" checked onchange="searchShift2()">英</label>
+                
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv1_shift2" onchange="searchShift2()">画Lv.1</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv2_shift2" onchange="searchShift2()">画Lv.2</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv3_shift2" onchange="searchShift2()">画Lv.3</label>
             </div>
 
-            <div id="shiftCount" class="result-count">文字を入力してください</div>
+            <div id="shift2Count" class="result-count">数値を入力してください</div>
         </div>
-        <div id="shiftResultArea" class="result-area"></div>
+        <div id="shift2ResultArea" class="result-area"></div>
     </div>
 
 </div>
@@ -222,6 +75,7 @@
 <script src="search_custom.js"></script>
 <script src="search_redone.js"></script>
 <script src="search_shift.js"></script>
+<script src="search_shift2.js"></script> <!-- ★追加 -->
 
 </body>
 </html>
