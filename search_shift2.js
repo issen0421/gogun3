@@ -25,7 +25,6 @@ function searchShift2() {
     resultArea.innerHTML = "";
 
     // 入力値の解析 (例: "1 -2 3" -> [1, -2, 3])
-    // 全角数字も半角に直し、カンマやスペースで区切る
     let normalizedInput = rawInput
         .replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
         .replace(/[−－]/g, '-')
@@ -54,35 +53,33 @@ function searchShift2() {
         return;
     }
 
-    // 単語の長さでフィルタリング（入力された数値の個数と同じ長さの単語のみ対象）
+    // 単語の長さでフィルタリング
     const targetLength = shifts.length;
     let candidateWords = targetWords.filter(w => w.length === targetLength);
 
     // 高速検索用にSetを作成
-    // (アルファベットは大文字化して格納、日本語は正規化して格納)
     const wordSet = new Set();
     candidateWords.forEach(w => {
         wordSet.add(normalizeForShift2(w));
     });
 
     let foundPairs = [];
-    let usedPairs = new Set(); // 重複表示防止 (A->B が出たら A->Bはもう出さない)
+    let usedPairs = new Set(); 
 
-    // 全候補単語について、シフト後の単語が存在するかチェック
+    // 全候補単語についてチェック
     candidateWords.forEach(wordA => {
         const normA = normalizeForShift2(wordA);
         const isAlphabet = /^[a-zA-Z]+$/.test(wordA);
         const sequence = isAlphabet ? ALPHABET_SEQ_S2 : HIRAGANA_SEQ_S2;
 
-        // シフト後の文字列を作成
         let wordBChars = "";
         let isValidShift = true;
+        let shiftDisplayHtmls = []; // 表示用のHTML部品を貯める配列
 
         for (let i = 0; i < normA.length; i++) {
             const char = normA[i];
             const idx = sequence.indexOf(char);
             
-            // 対応外の文字が含まれていたらスキップ
             if (idx === -1) {
                 isValidShift = false;
                 break;
@@ -93,24 +90,30 @@ function searchShift2() {
             if (shiftedIdx < 0) shiftedIdx += sequence.length;
             
             wordBChars += sequence[shiftedIdx];
+
+            // ★ループ判定ロジック
+            // 「単純計算したインデックス」と「丸め込み後のインデックス」が異なればループ
+            const rawDest = idx + shift;
+            const isLoop = (rawDest !== shiftedIdx);
+
+            // 表示用HTML作成
+            let sign = shift >= 0 ? "+" : "";
+            let text = sign + shift;
+            let html = text;
+            
+            if (isLoop && shift !== 0) {
+                // style.css に定義済みの loop-highlight クラスを使用
+                html = `<span class="loop-highlight" title="境界をまたぎました">${text}<span class="loop-mark">↺</span></span>`;
+            }
+            shiftDisplayHtmls.push(html);
         }
 
         if (!isValidShift) return;
 
-        // 生成された WordB が辞書に存在するか？
         if (wordSet.has(wordBChars)) {
-            // 見つかった！
-            // 表示用に元の表記を探す（Setには正規化文字しか入っていないため、候補リストから探すのはコスト高いが、
-            // ここでは簡易的に wordBChars そのものを表示するか、candidateから探す。
-            // 正確を期すならMapを作るべきだが、今回はヒット数が少ない想定なので
-            // Setにある＝wordBChars自体が単語として成立している。
-            // ただし、大文字小文字やひらがなの違いを吸収しているので、
-            // 辞書内の「元の表記」を探して表示してあげると親切。
-            
             let originalWordB = candidateWords.find(w => normalizeForShift2(w) === wordBChars);
-            if (!originalWordB) originalWordB = wordBChars; // フォールバック
+            if (!originalWordB) originalWordB = wordBChars; 
 
-            // 自分自身への変換は除外する（全て0ずらしの場合など）
             if (wordA === originalWordB) return;
 
             const pairKey = `${wordA}:${originalWordB}`;
@@ -120,12 +123,11 @@ function searchShift2() {
             foundPairs.push({
                 from: wordA,
                 to: originalWordB,
-                shifts: shifts
+                shiftHtmls: shiftDisplayHtmls // HTML配列を保存
             });
         }
     });
 
-    // 結果表示
     if (foundPairs.length === 0) {
         countEl.innerText = "条件に合うペアは見つかりませんでした";
         resultArea.innerHTML = `<div class="no-result">見つかりませんでした</div>`;
@@ -138,12 +140,12 @@ function searchShift2() {
         const card = document.createElement('div');
         card.className = 'group-card match-perfect';
         
-        // シフト情報の表示整形
-        const shiftInfo = pair.shifts.map(n => (n >= 0 ? `+${n}` : n)).join(' ');
+        // 保存しておいたHTML部品をスペース区切りで結合
+        const shiftInfoHtml = pair.shiftHtmls.join(' ');
 
         card.innerHTML = `
             <div style="margin-bottom:5px; font-size:0.8em; color:#777;">
-                ずらし: <span style="font-weight:bold; color:#e74c3c;">${shiftInfo}</span>
+                ずらし: <span style="font-weight:bold; color:#e74c3c;">${shiftInfoHtml}</span>
             </div>
             <div class="word-list" style="align-items: center;">
                 <span class="word-item" style="font-size:1.3em;">${pair.from}</span>
@@ -156,11 +158,9 @@ function searchShift2() {
 }
 
 function normalizeForShift2(str) {
-    // 英語は大文字化、日本語は正規化（濁点とりなど）
     if (/^[a-zA-Z]+$/.test(str)) {
         return str.toUpperCase();
     }
-    // かな正規化（search_shift.jsのロジックを流用）
     let res = "";
     const seq = HIRAGANA_SEQ_S2;
     for (let char of str) {
