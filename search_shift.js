@@ -2,17 +2,22 @@
 const HIRAGANA_SEQUENCE = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん";
 const ALPHABET_SEQUENCE = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-// 検索を高速化するためのインデックス（通常モード用）
+// 検索を高速化するためのインデックス
 let shiftIndexes = {
     std: { set: null, anagram: null },
     pig: { set: null, anagram: null },
-    eng: { set: null, anagram: null }
+    eng: { set: null, anagram: null },
+    // ★追加
+    ill1: { set: null, anagram: null },
+    ill2: { set: null, anagram: null },
+    ill3: { set: null, anagram: null }
 };
 let isShiftIndexReady = false;
 
 // 辞書配列から検索用インデックスを作る関数
 function prepareShiftIndexes() {
     if (isShiftIndexReady) return;
+    // 辞書が空かどうかチェック（イラスト辞書がなくても他があればOK）
     if ((!dictStandard || dictStandard.length === 0) && (!dictEnglish || dictEnglish.length === 0)) return;
 
     const buildIndex = (wordList) => {
@@ -40,6 +45,11 @@ function prepareShiftIndexes() {
     if (dictStandard) shiftIndexes.std = buildIndex(dictStandard);
     if (dictPig)      shiftIndexes.pig = buildIndex(dictPig);
     if (dictEnglish)  shiftIndexes.eng = buildIndex(dictEnglish);
+    
+    // ★追加
+    if (dictIllustLv1) shiftIndexes.ill1 = buildIndex(dictIllustLv1);
+    if (dictIllustLv2) shiftIndexes.ill2 = buildIndex(dictIllustLv2);
+    if (dictIllustLv3) shiftIndexes.ill3 = buildIndex(dictIllustLv3);
 
     isShiftIndexReady = true;
 }
@@ -54,6 +64,11 @@ function searchShift() {
     const useStd = document.getElementById('useDictStandard_shift').checked;
     const usePig = document.getElementById('useDictPig_shift').checked;
     const useEng = document.getElementById('useDictEnglish_shift').checked;
+    // ★追加: イラスト辞書のチェック状態
+    const useIll1 = document.getElementById('useDictIllustLv1_shift')?.checked;
+    const useIll2 = document.getElementById('useDictIllustLv2_shift')?.checked;
+    const useIll3 = document.getElementById('useDictIllustLv3_shift')?.checked;
+
     const allowAnagram = document.getElementById('allowAnagram').checked;
     const allowPlusMinus = document.getElementById('allowPlusMinus').checked;
 
@@ -74,6 +89,10 @@ function searchShift() {
     if (useStd) targetDictKeys.push('std');
     if (usePig) targetDictKeys.push('pig');
     if (useEng) targetDictKeys.push('eng');
+    // ★追加
+    if (useIll1) targetDictKeys.push('ill1');
+    if (useIll2) targetDictKeys.push('ill2');
+    if (useIll3) targetDictKeys.push('ill3');
 
     if (targetDictKeys.length === 0) {
         countEl.innerText = "辞書が選択されていません";
@@ -102,7 +121,7 @@ function searchShift() {
     }
 
     let results = [];
-    let foundWordSet = new Set(); // 重複排除用
+    let foundWordSet = new Set(); 
 
     // ============================================================
     //  モードA: ±同一視 (PlusMinus) が ON の場合
@@ -113,6 +132,10 @@ function searchShift() {
             if (key === 'std') allWords = allWords.concat(dictStandard);
             if (key === 'pig') allWords = allWords.concat(dictPig);
             if (key === 'eng') allWords = allWords.concat(dictEnglish);
+            // ★追加
+            if (key === 'ill1') allWords = allWords.concat(dictIllustLv1);
+            if (key === 'ill2') allWords = allWords.concat(dictIllustLv2);
+            if (key === 'ill3') allWords = allWords.concat(dictIllustLv3);
         });
         allWords = [...new Set(allWords)];
 
@@ -228,7 +251,7 @@ function searchShift() {
 
 
 // --------------------------------------------------------------------------
-//  判定ロジック関数群
+//  判定ロジック関数群 (共通)
 // --------------------------------------------------------------------------
 
 function checkDistanceMatch(input, target, sequence, allowAnagram) {
@@ -250,10 +273,8 @@ function getDiffStringIfMatches(input, target, sequence, N, allowAnagram) {
             const idxIn = sequence.indexOf(input[i]);
             const idxTg = sequence.indexOf(target[i]);
             
-            // 距離と表示用文字列を取得（ループ判定含む）
             const dObj = getDiffInfo(idxIn, idxTg, sequence);
             
-            // 距離チェック
             if (Math.abs(dObj.disp) !== N) return { isMatch: false };
 
             diffs.push(dObj.html);
@@ -270,33 +291,25 @@ function getDiffStringIfMatches(input, target, sequence, N, allowAnagram) {
     }
 }
 
-// 2点間の距離情報と、表示用HTMLを返す
 function getDiffInfo(idx1, idx2, sequence) {
     const len = sequence.length;
-    // 単純な引き算（直線距離）
     const rawDiff = idx2 - idx1;
-    
-    // 最短距離計算（環状補正）
     let disp = (idx2 - idx1 + len) % len;
     if (disp > len / 2) disp -= len;
 
-    // ループ判定: 「単純な引き算」と「補正後の値」が食い違っていればループ
-    // 例: A(0)->Y(24) len=26. raw=24, disp=-2. 食い違うのでループ
     const isLoop = (rawDiff !== disp);
 
     let sign = disp >= 0 ? "+" : "";
     let text = sign + disp;
 
-    // ループ時はスタイル適用
     let html = text;
-    if (isLoop && disp !== 0) { // 0の場合はループマーク不要
+    if (isLoop && disp !== 0) { 
         html = `<span class="loop-highlight" title="境界をまたぎました">${text}<span class="loop-mark">↺</span></span>`;
     }
 
     return { disp: disp, html: html };
 }
 
-// アナグラム時の差分パターンを探索する
 function solveAnagramDiff(inputChars, targetChars, sequence, N) {
     const backtrack = (remainingInput, targetIdx, currentDiffs) => {
         if (targetIdx >= targetChars.length) {
@@ -327,7 +340,6 @@ function solveAnagramDiff(inputChars, targetChars, sequence, N) {
     return backtrack(inputChars, 0, []);
 }
 
-// 正規化関数
 function normalizeToSequence(str, sequence) {
     let res = "";
     for (let char of str) {
