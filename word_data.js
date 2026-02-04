@@ -9,6 +9,11 @@ let dictStandard = [];   // 日本語一般語.txt
 let dictPig = [];        // 豚辞書.txt
 let dictEnglish = [];    // 英語一般語.txt
 
+// ★追加: イラスト辞書用変数
+let dictIllustLv1 = [];
+let dictIllustLv2 = [];
+let dictIllustLv3 = [];
+
 // モード管理
 let currentMode = 'gojuon'; 
 let activeLayout = []; 
@@ -19,7 +24,7 @@ let customLayout = [];
 window.onload = function() {
     loadData();             // 語群
     loadRedoneData();       // 解き直し
-    loadAllDictionaries();  // テキスト辞書
+    loadAllDictionaries();  // テキスト辞書（ここですべて読み込まれます）
     
     // 漢字検索の初期表示
     if (typeof KANJI_DATA !== 'undefined' && typeof searchKanji === 'function') {
@@ -52,18 +57,16 @@ function switchTab(tabName) {
     } else if (tabName === 'redone') {
         currentMode = 'redone';
     } else if (tabName === 'shift') {
-        // 文字ずらしモード（特に追加処理なし、検索はボタンor入力で行う）
         currentMode = 'shift';
     }
 }
 
 // -------------------------------------------------------
-//  ▼▼▼ ここから下が消えていた関数群です（追加・復旧） ▼▼▼
+//  共通関数群
 // -------------------------------------------------------
 
 // セルクリック時の共通処理
 function onCellClick(div, r, c, char) {
-    // 既に選択済みの最後のセルと同じなら解除
     if (selectedCells.length > 0 && selectedCells[selectedCells.length-1].char === char) {
         selectedCells.pop();
         div.classList.remove('selected');
@@ -73,7 +76,7 @@ function onCellClick(div, r, c, char) {
     }
     
     updateDisplay();
-    drawLines(); // 描画更新
+    drawLines();
     
     // モードに応じた検索を実行
     if (currentMode === 'gojuon' && typeof searchGojuon === 'function') {
@@ -83,7 +86,6 @@ function onCellClick(div, r, c, char) {
     }
 }
 
-// 選択リセット (ReferenceErrorの原因だった関数)
 function resetSelection() {
     selectedCells = [];
     document.querySelectorAll('.cell').forEach(c => c.classList.remove('selected'));
@@ -91,12 +93,10 @@ function resetSelection() {
     updateDisplay();
     drawLines();
 
-    // 結果クリア
     if(document.getElementById('gojuonResultArea')) document.getElementById('gojuonResultArea').innerHTML = "";
     if(document.getElementById('customResultArea')) document.getElementById('customResultArea').innerHTML = "";
 }
 
-// 選択内容の表示更新
 function updateDisplay() {
     const text = selectedCells.map(s => s.char).join(' → ');
     
@@ -107,16 +107,11 @@ function updateDisplay() {
     if(customDisp) customDisp.innerText = "選択: " + (text || "なし");
 }
 
-// 線の描画ラッパー（現在のモードに合わせて canvasId を選ぶ）
 function drawLines() {
     const canvasId = (currentMode === 'gojuon') ? 'lineCanvasGojuon' : 'lineCanvasCustom';
     const gridId = (currentMode === 'gojuon') ? 'gojuonGrid' : 'customGrid';
     drawLinesCommon(canvasId, gridId, selectedCells);
 }
-
-// -------------------------------------------------------
-//  ▲▲▲ ここまで（復旧完了） ▲▲▲
-// -------------------------------------------------------
 
 // ユーティリティ: ひらがな→カタカナ
 function hiraToKata(str) {
@@ -173,7 +168,6 @@ function searchByShapeCommon(selectedCells, targetWords, layout, resultAreaId) {
     if (selectedCells.length < 2) return;
     if (!targetWords || targetWords.length === 0) return;
 
-    // オプションの取得
     const isCustom = (resultAreaId === 'customResultArea');
     const suffix = isCustom ? '_custom' : '';
     const rotEl = document.getElementById('allowRotation' + suffix);
@@ -233,7 +227,6 @@ function searchByShapeCommon(selectedCells, targetWords, layout, resultAreaId) {
             });
         }
 
-        // ベクトル比較
         for(let pat of patterns) {
             let isMatch = true;
             for(let i=0; i<pat.length; i++) {
