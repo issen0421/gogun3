@@ -30,7 +30,7 @@ function createCustomTable() {
     // 作成したらアクティブレイアウト更新
     if(currentMode === 'custom') {
         activeLayout = customLayout;
-        // モードリセット（編集モードはOFFに戻す）
+        // モードリセット
         isEditMode = false;
         if(document.getElementById('editModeCheckbox')) document.getElementById('editModeCheckbox').checked = false;
         updateEditModeStatus();
@@ -91,7 +91,6 @@ function renderCustomGrid() {
                 div.ondragover = (e) => handleDragOver(e);
                 div.ondrop = (e) => handleDrop(e, rIndex, cIndex);
                 
-                // タッチデバイス対応（簡易）は今回は省略
             } else {
                 // 検索モード
                 div.className = char ? 'cell' : 'cell empty';
@@ -109,7 +108,6 @@ function renderCustomGrid() {
         });
     });
     
-    // Canvasサイズ調整
     setTimeout(() => {
         const canvas = document.getElementById('lineCanvasCustom');
         if(canvas) {
@@ -128,7 +126,7 @@ function handleDragStart(e, r, c) {
 }
 
 function handleDragOver(e) {
-    if (e.preventDefault) e.preventDefault(); // ドロップ許可
+    if (e.preventDefault) e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     return false;
 }
@@ -136,26 +134,21 @@ function handleDragOver(e) {
 function handleDrop(e, r, c) {
     if (e.stopPropagation) e.stopPropagation();
     
-    // 自分自身へのドロップは何もしない
     if (!dragSrc || (dragSrc.r === r && dragSrc.c === c)) return false;
     
-    // データ入れ替え (Swap)
     const targetChar = customLayout[r][c];
     const srcChar = dragSrc.char;
     
     customLayout[r][c] = srcChar;
     customLayout[dragSrc.r][dragSrc.c] = targetChar;
     
-    // レイアウト更新反映
     activeLayout = customLayout;
     renderCustomGrid();
     
     return false;
 }
-// --------------------
 
 function onCustomCellClick(div, r, c, char) {
-    // 共通処理呼び出し
     if(typeof onCellClick === 'function') {
         onCellClick(div, r, c, char);
     }
@@ -169,11 +162,20 @@ function searchCustom() {
     const useStd = document.getElementById('useDictStandard_custom').checked;
     const usePig = document.getElementById('useDictPig_custom').checked;
     const useEng = document.getElementById('useDictEnglish_custom').checked;
+    // ★追加: イラスト辞書
+    const useIll1 = document.getElementById('useDictIllustLv1_custom')?.checked;
+    const useIll2 = document.getElementById('useDictIllustLv2_custom')?.checked;
+    const useIll3 = document.getElementById('useDictIllustLv3_custom')?.checked;
 
     let targetWords = [];
     if (useStd) targetWords = targetWords.concat(dictStandard);
     if (usePig) targetWords = targetWords.concat(dictPig);
     if (useEng) targetWords = targetWords.concat(dictEnglish);
+    
+    if (useIll1) targetWords = targetWords.concat(dictIllustLv1);
+    if (useIll2) targetWords = targetWords.concat(dictIllustLv2);
+    if (useIll3) targetWords = targetWords.concat(dictIllustLv3);
+
     targetWords = [...new Set(targetWords)];
 
     searchByShapeCommon(selectedCells, targetWords, customLayout, 'customResultArea');
