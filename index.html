@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>謎解き検索システム</title>
+    <!-- ファビコンエラー回避用 -->
+    <link rel="icon" href="data:,">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -77,6 +79,10 @@
                 <span class="opt-title">使用する辞書:</span>
                 <label class="checkbox-label"><input type="checkbox" id="useDictStandard" checked onchange="searchByShape()">一般語</label>
                 <label class="checkbox-label"><input type="checkbox" id="useDictPig" onchange="searchByShape()">豚辞書</label>
+                <!-- ★追加: イラスト辞書 -->
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv1" onchange="searchByShape()">画Lv.1</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv2" onchange="searchByShape()">画Lv.2</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv3" onchange="searchByShape()">画Lv.3</label>
             </div>
             <div class="gojuon-options">
                 <span class="opt-title">形状オプション:</span>
@@ -93,7 +99,7 @@
         <div id="gojuonResultArea" class="result-area"></div>
     </div>
 
-    <!-- ▼▼▼ カスタム表検索タブ (修正) ▼▼▼ -->
+    <!-- カスタム表検索タブ -->
     <div id="tab-custom" class="tab-content">
         <p class="description">自由に文字を配置して検索できます</p>
         <div class="custom-maker">
@@ -104,7 +110,7 @@
             </div>
         </div>
         
-        <!-- ★編集モード切替スイッチ -->
+        <!-- 編集モード切替スイッチ -->
         <div style="margin-bottom: 10px;">
             <label class="edit-switch-label">
                 <input type="checkbox" id="editModeCheckbox" onchange="toggleEditMode()">
@@ -122,6 +128,10 @@
                 <label class="checkbox-label"><input type="checkbox" id="useDictStandard_custom" checked onchange="searchByShape()">一般語</label>
                 <label class="checkbox-label"><input type="checkbox" id="useDictPig_custom" onchange="searchByShape()">豚辞書</label>
                 <label class="checkbox-label"><input type="checkbox" id="useDictEnglish_custom" checked onchange="searchByShape()">英語</label>
+                <!-- ★追加: イラスト辞書 -->
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv1_custom" onchange="searchByShape()">画Lv.1</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv2_custom" onchange="searchByShape()">画Lv.2</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv3_custom" onchange="searchByShape()">画Lv.3</label>
             </div>
             <div class="gojuon-options">
                 <span class="opt-title">形状:</span>
@@ -165,29 +175,33 @@
         <div id="redoneResultArea" class="result-area"></div>
     </div>
 
-</div>
+    <!-- 文字ずらし検索タブ -->
+    <div id="tab-shift" class="tab-content">
+        <p class="description">文字をずらして（シーザー暗号）、辞書にある単語を探します</p>
+        <div class="search-box">
+            <input type="text" id="shiftInput" placeholder="文字を入力（例：あいうえお / ABC）" oninput="searchShift()">
+            
+            <div class="options">
+                <span class="opt-title">辞書:</span>
+                <label class="checkbox-label"><input type="checkbox" id="useDictStandard_shift" checked oninput="searchShift()">一般</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictPig_shift" oninput="searchShift()">豚</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictEnglish_shift" checked oninput="searchShift()">英</label>
+                <!-- ★追加: イラスト辞書 -->
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv1_shift" oninput="searchShift()">画Lv.1</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv2_shift" oninput="searchShift()">画Lv.2</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv3_shift" oninput="searchShift()">画Lv.3</label>
+            </div>
+            <div class="options">
+                 <span class="opt-title">オプション:</span>
+                 <label class="checkbox-label"><input type="checkbox" id="allowPlusMinus" oninput="searchShift()">±同一視</label>
+                 <label class="checkbox-label"><input type="checkbox" id="allowAnagram" oninput="searchShift()">並び替え(アナグラム)</label>
+            </div>
 
-<!-- 文字ずらし検索タブ -->
-<div id="tab-shift" class="tab-content">
-    <p class="description">文字をずらして（シーザー暗号）、辞書にある単語を探します</p>
-    <div class="search-box">
-        <input type="text" id="shiftInput" placeholder="文字を入力（例：あいうえお / ABC）" oninput="searchShift()">
-
-        <div class="options">
-            <span class="opt-title">辞書:</span>
-            <label class="checkbox-label"><input type="checkbox" id="useDictStandard_shift" checked oninput="searchShift()">一般</label>
-            <label class="checkbox-label"><input type="checkbox" id="useDictPig_shift" oninput="searchShift()">豚</label>
-            <label class="checkbox-label"><input type="checkbox" id="useDictEnglish_shift" checked oninput="searchShift()">英</label>
+            <div id="shiftCount" class="result-count">文字を入力してください</div>
         </div>
-        <div class="options">
-             <span class="opt-title">オプション:</span>
-             <label class="checkbox-label"><input type="checkbox" id="allowPlusMinus" oninput="searchShift()">±同一視</label>
-             <label class="checkbox-label"><input type="checkbox" id="allowAnagram" oninput="searchShift()">並び替え(アナグラム)</label>
-        </div>
-
-        <div id="shiftCount" class="result-count">文字を入力してください</div>
+        <div id="shiftResultArea" class="result-area"></div>
     </div>
-    <div id="shiftResultArea" class="result-area"></div>
+
 </div>
 
 <!-- 詳細表示モーダル -->
@@ -200,7 +214,7 @@
 
 <!-- JSファイル群読み込み -->
 <script src="kanji_data.js"></script>
-<script src="kanji_parts.js"></script> <!-- ★追加しました -->
+<script src="kanji_parts.js"></script>
 <script src="word_data.js"></script>
 <script src="search_word.js"></script>
 <script src="search_kanji.js"></script>
