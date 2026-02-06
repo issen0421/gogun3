@@ -18,6 +18,7 @@
         <button class="tab-btn" onclick="switchTab('kanji')">漢字検索</button>
         <button class="tab-btn" onclick="switchTab('gojuon')">五十音表</button>
         <button class="tab-btn" onclick="switchTab('custom')">カスタム表</button>
+        <button class="tab-btn" onclick="switchTab('custom2')">カスタム表2</button>
         <button class="tab-btn" onclick="switchTab('redone')">解き直し</button>
         <button class="tab-btn" onclick="switchTab('shift')">文字ずらし</button>
         <button class="tab-btn" onclick="switchTab('shift2')">文字ずらし2</button>
@@ -149,6 +150,73 @@
         <div id="customResultArea" class="result-area"></div>
     </div>
 
+        <!-- ★追加: カスタム表2 検索タブ -->
+    <div id="tab-custom2" class="tab-content">
+        <p class="description">
+            左右2つの表を見比べ、同じ位置の文字を拾うと<br>
+            「両方とも単語になる」パターンを探します。
+        </p>
+
+        <!-- 表作成エリア -->
+        <div class="custom-maker">
+            <div class="dual-input-container">
+                <div class="input-block">
+                    <span class="input-label">左の表</span>
+                    <textarea id="custom2InputLeft" placeholder="例: あいう..."></textarea>
+                </div>
+                <div class="input-block">
+                    <span class="input-label">右の表</span>
+                    <textarea id="custom2InputRight" placeholder="例: かきく..."></textarea>
+                </div>
+            </div>
+            
+            <div class="custom-settings">
+                <label>列数: <input type="number" id="custom2Cols" value="5" min="1" max="20"></label>
+                <button class="btn-create" onclick="createCustom2Tables()">表を作成</button>
+            </div>
+        </div>
+
+        <!-- 検索コントロール -->
+        <div class="search-box">
+            <div style="margin-bottom:10px; font-weight:bold; color:#555;">検索設定</div>
+            <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin-bottom:10px;">
+                <span>探す単語の長さ:</span>
+                <input type="number" id="custom2SearchLen" value="3" min="2" max="20" style="width:60px; text-align:center;">
+                <span>文字</span>
+                <button class="tab-btn active" style="margin-left:10px; padding: 5px 15px;" onclick="searchCustom2()">ペアを検索</button>
+            </div>
+
+            <div class="options">
+                <span class="opt-title">辞書:</span>
+                <label class="checkbox-label"><input type="checkbox" id="useDictStandard_custom2" checked>一般</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictPig_custom2">豚</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictEnglish_custom2" checked>英</label>
+                
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv1_custom2">画Lv.1</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv2_custom2">画Lv.2</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv3_custom2">画Lv.3</label>
+            </div>
+            <div id="custom2Count" class="result-count">表を作成して検索してください</div>
+        </div>
+
+        <!-- グリッド表示エリア（2つ並べる） -->
+        <div class="dual-grid-wrapper">
+            <div class="grid-container">
+                <div class="grid-label">左の表</div>
+                <div id="custom2GridLeft" class="gojuon-grid custom-grid-style"></div>
+            </div>
+            <div class="grid-container">
+                <div class="grid-label">右の表</div>
+                <div id="custom2GridRight" class="gojuon-grid custom-grid-style"></div>
+            </div>
+        </div>
+
+        <div id="custom2ResultArea" class="result-area"></div>
+    </div>
+
+</div>
+
+
     <!-- 解き直し検索タブ -->
     <div id="tab-redone" class="tab-content">
         <p class="description">
@@ -252,6 +320,7 @@
 <script src="search_kanji.js"></script>
 <script src="search_gojuon.js"></script>
 <script src="search_custom.js"></script>
+<script src="search_custom2.js"></script>
 <script src="search_redone.js"></script>
 <script src="search_shift.js"></script>
 <script src="search_shift2.js"></script>
