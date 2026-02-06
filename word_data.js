@@ -58,7 +58,8 @@ function switchTab(tabName) {
         currentMode = 'redone';
     } else if (tabName === 'shift') {
         currentMode = 'shift';
-    }
+    } else if (tabName === 'shift2') {
+        currentMode = 'shift2';
     } else if (tabName === 'custom2') {
         // ★追加: カスタム表2
         currentMode = 'custom2';
@@ -273,36 +274,3 @@ function getCoordCommon(char, layout) {
     }
     return null;
 }
-
-// ... (前略)
-
-// タブ切り替え関数
-function switchTab(tabName) {
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    document.querySelector(`.tab-btn[onclick="switchTab('${tabName}')"]`).classList.add('active');
-    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-    document.getElementById(`tab-${tabName}`).classList.add('active');
-
-    // モードに応じたリセット処理
-    if (tabName === 'gojuon') {
-        currentMode = 'gojuon';
-        if(typeof GOJUON_LAYOUT !== 'undefined') activeLayout = GOJUON_LAYOUT;
-        if(typeof resetGojuon === 'function') resetGojuon();
-    } else if (tabName === 'custom') {
-        currentMode = 'custom';
-        if (customLayout.length > 0) activeLayout = customLayout;
-        if(typeof resetCustom === 'function') resetCustom();
-    } else if (tabName === 'redone') {
-        currentMode = 'redone';
-    } else if (tabName === 'shift') {
-        currentMode = 'shift';
-    } else if (tabName === 'shift2') {
-        currentMode = 'shift2';
-    } else if (tabName === 'custom2') {
-        // ★追加: カスタム表2
-        currentMode = 'custom2';
-    }
-}
-
-
-// ... (後略)
