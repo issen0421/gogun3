@@ -59,6 +59,10 @@ function switchTab(tabName) {
     } else if (tabName === 'shift') {
         currentMode = 'shift';
     }
+    } else if (tabName === 'custom2') {
+        // ★追加: カスタム表2
+        currentMode = 'custom2';
+    }
 }
 
 // -------------------------------------------------------
