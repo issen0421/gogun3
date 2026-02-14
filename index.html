@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>謎解き検索システム</title>
-    <!-- ファビコンエラー回避用 -->
     <link rel="icon" href="data:,">
     <link rel="stylesheet" href="style.css">
 </head>
@@ -79,18 +78,24 @@
         <div class="gojuon-controls">
             <button class="btn-reset" onclick="resetSelection()">リセット</button>
             <div class="gojuon-options">
-                <span class="opt-title">使用する辞書:</span>
-                <label class="checkbox-label"><input type="checkbox" id="useDictStandard" checked onchange="searchByShape()">一般語</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictPig" onchange="searchByShape()">豚辞書</label>
-                <!-- ★追加: イラスト辞書 -->
-                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv1" onchange="searchByShape()">イラストLv.1</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv2" onchange="searchByShape()">イラストLv.2</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv3" onchange="searchByShape()">イラストLv.3</label>
+                <span class="opt-title">辞書:</span>
+                <label class="checkbox-label"><input type="checkbox" id="useDictStandard" checked onchange="searchByShape()">一般</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictPig" onchange="searchByShape()">豚</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv1" onchange="searchByShape()">画Lv.1</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv2" onchange="searchByShape()">画Lv.2</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv3" onchange="searchByShape()">画Lv.3</label>
             </div>
             <div class="gojuon-options">
-                <span class="opt-title">形状オプション:</span>
+                <span class="opt-title">形状:</span>
                 <label class="checkbox-label"><input type="checkbox" id="allowRotation" onchange="searchByShape()">回転OK</label>
                 <label class="checkbox-label"><input type="checkbox" id="allowReflection" onchange="searchByShape()">反転OK</label>
+            </div>
+            <!-- ★追加 -->
+            <div class="options">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="looseMode_gojuon" onchange="searchByShape()">
+                    濁音・半濁音・拗音を区別しない
+                </label>
             </div>
             <div id="gojuonSelectDisplay" class="select-display">選択: なし</div>
         </div>
@@ -113,7 +118,6 @@
             </div>
         </div>
         
-        <!-- 編集モード切替スイッチ -->
         <div style="margin-bottom: 10px;">
             <label class="edit-switch-label">
                 <input type="checkbox" id="editModeCheckbox" onchange="toggleEditMode()">
@@ -128,18 +132,24 @@
             <button class="btn-reset" onclick="resetSelection()">リセット</button>
             <div class="gojuon-options">
                 <span class="opt-title">辞書:</span>
-                <label class="checkbox-label"><input type="checkbox" id="useDictStandard_custom" checked onchange="searchByShape()">一般語</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictPig_custom" onchange="searchByShape()">豚辞書</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictEnglish_custom" checked onchange="searchByShape()">英語</label>
-                <!-- ★追加: イラスト辞書 -->
-                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv1_custom" onchange="searchByShape()">イラストLv.1</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv2_custom" onchange="searchByShape()">イラストLv.2</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv3_custom" onchange="searchByShape()">イラストLv.3</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictStandard_custom" checked onchange="searchByShape()">一般</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictPig_custom" onchange="searchByShape()">豚</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictEnglish_custom" checked onchange="searchByShape()">英</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv1_custom" onchange="searchByShape()">画Lv.1</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv2_custom" onchange="searchByShape()">画Lv.2</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv3_custom" onchange="searchByShape()">画Lv.3</label>
             </div>
             <div class="gojuon-options">
                 <span class="opt-title">形状:</span>
                 <label class="checkbox-label"><input type="checkbox" id="allowRotation_custom" onchange="searchByShape()">回転OK</label>
                 <label class="checkbox-label"><input type="checkbox" id="allowReflection_custom" onchange="searchByShape()">反転OK</label>
+            </div>
+            <!-- ★追加 -->
+            <div class="options">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="looseMode_custom" onchange="searchByShape()">
+                    濁音・半濁音・拗音を区別しない
+                </label>
             </div>
             <div id="customSelectDisplay" class="select-display">選択: なし</div>
         </div>
@@ -151,14 +161,13 @@
         <div id="customResultArea" class="result-area"></div>
     </div>
 
-        <!-- ★追加: カスタム表2 検索タブ -->
+    <!-- カスタム表2 検索タブ -->
     <div id="tab-custom2" class="tab-content">
         <p class="description">
             左右2つの表を見比べ、同じ位置の文字を拾うと<br>
             「両方とも単語になる」パターンを探します。
         </p>
 
-        <!-- 表作成エリア -->
         <div class="custom-maker">
             <div class="dual-input-container">
                 <div class="input-block">
@@ -177,7 +186,6 @@
             </div>
         </div>
 
-        <!-- 検索コントロール -->
         <div class="search-box">
             <div style="margin-bottom:10px; font-weight:bold; color:#555;">検索設定</div>
             <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin-bottom:10px;">
@@ -192,15 +200,20 @@
                 <label class="checkbox-label"><input type="checkbox" id="useDictStandard_custom2" checked>一般</label>
                 <label class="checkbox-label"><input type="checkbox" id="useDictPig_custom2">豚</label>
                 <label class="checkbox-label"><input type="checkbox" id="useDictEnglish_custom2" checked>英</label>
-                
                 <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv1_custom2">画Lv.1</label>
                 <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv2_custom2">画Lv.2</label>
                 <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv3_custom2">画Lv.3</label>
             </div>
+            <!-- ★追加 -->
+            <div class="options">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="looseMode_custom2">
+                    濁音・半濁音・拗音を区別しない
+                </label>
+            </div>
             <div id="custom2Count" class="result-count">表を作成して検索してください</div>
         </div>
 
-        <!-- グリッド表示エリア（2つ並べる） -->
         <div class="dual-grid-wrapper">
             <div class="grid-container">
                 <div class="grid-label">左の表</div>
@@ -214,9 +227,6 @@
 
         <div id="custom2ResultArea" class="result-area"></div>
     </div>
-
-</div>
-
 
     <!-- 解き直し検索タブ -->
     <div id="tab-redone" class="tab-content">
@@ -253,28 +263,32 @@
             
             <div class="options">
                 <span class="opt-title">辞書:</span>
-                <label class="checkbox-label"><input type="checkbox" id="useDictStandard_shift" checked oninput="searchShift()">一般語</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictPig_shift" oninput="searchShift()">豚辞書</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictEnglish_shift" checked oninput="searchShift()">英語</label>
-                <!-- ★追加: イラスト辞書 -->
-                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv1_shift" oninput="searchShift()">イラストLv.1</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv2_shift" oninput="searchShift()">イラストLv.2</label>
-                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv3_shift" oninput="searchShift()">イラストLv.3</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictStandard_shift" checked oninput="searchShift()">一般</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictPig_shift" oninput="searchShift()">豚</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictEnglish_shift" checked oninput="searchShift()">英</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv1_shift" oninput="searchShift()">画Lv.1</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv2_shift" oninput="searchShift()">画Lv.2</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv3_shift" oninput="searchShift()">画Lv.3</label>
             </div>
             <div class="options">
                  <span class="opt-title">オプション:</span>
                  <label class="checkbox-label"><input type="checkbox" id="allowPlusMinus" oninput="searchShift()">±同一視</label>
                  <label class="checkbox-label"><input type="checkbox" id="allowAnagram" oninput="searchShift()">並び替え(アナグラム)</label>
             </div>
+            <!-- ★追加 -->
+            <div class="options">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="looseMode_shift" oninput="searchShift()">
+                    濁音・半濁音・拗音を区別しない
+                </label>
+            </div>
 
             <div id="shiftCount" class="result-count">文字を入力してください</div>
         </div>
         <div id="shiftResultArea" class="result-area"></div>
     </div>
-
-</div>
     
-    <!-- ★追加: 文字ずらし2 検索タブ -->
+    <!-- 文字ずらし2 検索タブ -->
     <div id="tab-shift2" class="tab-content">
         <p class="description">
             「1文字目を+1、2文字目を-3...」のように文字ごとにずらし数を指定し、<br>
@@ -292,10 +306,16 @@
                 <label class="checkbox-label"><input type="checkbox" id="useDictStandard_shift2" checked onchange="searchShift2()">一般</label>
                 <label class="checkbox-label"><input type="checkbox" id="useDictPig_shift2" onchange="searchShift2()">豚</label>
                 <label class="checkbox-label"><input type="checkbox" id="useDictEnglish_shift2" checked onchange="searchShift2()">英</label>
-                
                 <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv1_shift2" onchange="searchShift2()">画Lv.1</label>
                 <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv2_shift2" onchange="searchShift2()">画Lv.2</label>
                 <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv3_shift2" onchange="searchShift2()">画Lv.3</label>
+            </div>
+            <!-- ★追加 -->
+            <div class="options">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="looseMode_shift2" onchange="searchShift2()">
+                    濁音・半濁音・拗音を区別しない
+                </label>
             </div>
 
             <div id="shift2Count" class="result-count">数値を入力してください</div>
@@ -303,9 +323,7 @@
         <div id="shift2ResultArea" class="result-area"></div>
     </div>
 
-</div>
-
-    <!-- ★追加: フリック変換 検索タブ -->
+    <!-- フリック変換 検索タブ -->
     <div id="tab-flick" class="tab-content">
         <p class="description">
             スマホのフリック入力（12キー）において、<br>
@@ -327,11 +345,11 @@
                 <label class="checkbox-label"><input type="checkbox" id="useDictEnglish_flick" checked>英</label>
                 <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv1_flick">画Lv.1</label>
             </div>
+            <!-- ★修正: IDを統一感のあるものに変更 -->
             <div class="options">
-                <span class="opt-title">オプション:</span>
-                <label class="checkbox-label" title="「が」を「か」と同じ扱いにして検索します">
-                    <input type="checkbox" id="ignoreDakutenFlick" checked>
-                    濁点・小文字を清音と同一視
+                <label class="checkbox-label">
+                    <input type="checkbox" id="looseMode_flick" checked>
+                    濁音・半濁音・拗音を区別しない
                 </label>
             </div>
 
