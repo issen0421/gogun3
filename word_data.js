@@ -63,6 +63,9 @@ function switchTab(tabName) {
     } else if (tabName === 'custom2') {
         // ★追加: カスタム表2
         currentMode = 'custom2';
+    } else if (tabName === 'flick') {
+        // ★追加: フリック変換
+        currentMode = 'flick';
     }
 }
 
