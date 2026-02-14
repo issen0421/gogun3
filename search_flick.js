@@ -5,7 +5,7 @@
 // 例: "2-0" は「か」行キーの真ん中(=か, A)
 
 const FLICK_MAP_JP = {
-    // 1行 (あ) - 通常、英語入力では記号等が割り当てられるため、単語にはあまり使われないが定義しておく
+    // 1行 (あ)
     'あ':'1-0', 'い':'1-1', 'う':'1-2', 'え':'1-3', 'お':'1-4',
     // 2行 (か) -> ABC
     'か':'2-0', 'き':'2-1', 'く':'2-2', 'け':'2-3', 'こ':'2-4',
@@ -21,7 +21,7 @@ const FLICK_MAP_JP = {
     'ま':'7-0', 'み':'7-1', 'む':'7-2', 'め':'7-3', 'も':'7-4',
     // 8行 (や) -> TUV
     'や':'8-0', 'ゆ':'8-2', 'よ':'8-4',
-    '（':'8-1', '）':'8-3', // カッコ等は通常使わない
+    '（':'8-1', '）':'8-3',
     // 9行 (ら) -> WXYZ
     'ら':'9-0', 'り':'9-1', 'る':'9-2', 'れ':'9-3', 'ろ':'9-4',
     // 0行 (わ) 
@@ -61,7 +61,8 @@ function searchFlickPairs() {
     const useIll2 = document.getElementById('useDictIllustLv2_flick')?.checked;
     const useIll3 = document.getElementById('useDictIllustLv3_flick')?.checked;
     
-    const ignoreDakuten = document.getElementById('ignoreDakutenFlick').checked;
+    // オプション（濁点・半濁点・拗音を区別しない）
+    const looseMode = document.getElementById('looseMode_flick').checked;
 
     resultArea.innerHTML = "";
     countEl.innerText = "検索中...";
@@ -76,10 +77,6 @@ function searchFlickPairs() {
     
     let enWords = [];
     if (useEng) enWords = enWords.concat(dictEnglish);
-    // 日本語辞書の中にもアルファベット単語が含まれる場合があるのでそれも拾うなら拾うが、
-    // ここでは「英辞書」として明示的に指定されたものを英語ソースとするのが自然。
-    // もし日本語辞書内の "Amazon" とかを拾いたければ jpWords から英字のみ抽出して enWords に加える処理が必要。
-    // 今回はシンプルに dictEnglish をソースとする。
 
     if (jpWords.length === 0 || enWords.length === 0) {
         countEl.innerText = "日本語辞書と英語辞書の両方が必要です";
@@ -95,10 +92,10 @@ function searchFlickPairs() {
     const jpMap = new Map();
 
     jpWords.forEach(word => {
-        // アルファベットが含まれる日本語単語は除外（比較対象にならないため）
+        // アルファベットが含まれる日本語単語は除外
         if (/[a-zA-Z]/.test(word)) return;
 
-        const code = getFlickCodeSequence(word, true, ignoreDakuten);
+        const code = getFlickCodeSequence(word, true, looseMode);
         if (!code) return;
 
         if (!jpMap.has(code)) {
@@ -115,7 +112,7 @@ function searchFlickPairs() {
         // 日本語が含まれる英単語データは除外
         if (/[^\x00-\x7F]/.test(word)) return; 
 
-        const code = getFlickCodeSequence(word, false, ignoreDakuten);
+        const code = getFlickCodeSequence(word, false, looseMode);
         if (!code) return;
 
         // 日本語Mapに同じコードがあるか？
@@ -154,9 +151,6 @@ function searchFlickPairs() {
         const card = document.createElement('div');
         card.className = 'group-card match-perfect';
         
-        // コード配列を可読化（デバッグ用だが、利用者にキーを見せても面白い）
-        // 例: "2-0,3-1" -> "[2中][3左]" のように装飾してもよいが、ここではシンプルに
-        
         card.innerHTML = `
             <div class="word-list" style="justify-content: center; align-items: center;">
                 <span class="word-item" style="font-size:1.4em; font-weight:bold;">${pair.en}</span>
@@ -172,21 +166,24 @@ function searchFlickPairs() {
 }
 
 // 単語をフリックコード列に変換
-function getFlickCodeSequence(str, isJapanese, ignoreDakuten) {
+function getFlickCodeSequence(str, isJapanese, isLoose) {
     let codes = [];
     
     // 正規化
     let normalized = str;
     if (isJapanese) {
-        if (ignoreDakuten) {
-            normalized = normalizeToClean(str);
+        if (isLoose) {
+            // word_data.js の normalizeString を使用 (濁点除去、小文字->大文字、カタカナ->ひらがな)
+            if (typeof normalizeString === 'function') {
+                normalized = normalizeString(str);
+            } else {
+                // フォールバック（念のため）
+                normalized = normalizeToCleanFallback(str);
+            }
         } else {
-            // 濁点を無視しない場合、濁点文字(が)はどう入力するか？
-            // 「か(2-0)」+「濁点ボタン」になる。
-            // しかし「同じ指の動き」という文脈では、「濁点ボタン」の操作が含まれると
-            // アルファベット側（濁点がない）とマッチしなくなるため、
-            // 事実上「濁点付き文字を含む単語」はヒットしなくなる。
-            // そのため、ここでは何もしない（FLICK_MAP_JPにない文字はnullになるので除外される）
+            // 厳密モード: 濁点はそのまま。ただしマップにない文字はnullになるため除外される
+            // (フリックマップには濁点付き文字は定義していないため、実質的にヒットしなくなる)
+            normalized = str; 
         }
     } else {
         normalized = str.toUpperCase();
@@ -210,8 +207,7 @@ function getFlickCodeSequence(str, isJapanese, ignoreDakuten) {
     return codes.join(',');
 }
 
-// 表示用にコードを整形 (例: "2-0" -> "2")
-// 方向まで出すとごちゃごちゃするので、キー番号だけ出すか、記号で出す
+// 表示用にコードを整形 (例: "2-0" -> "[2･]")
 function formatFlickCode(codeSeq) {
     return codeSeq.split(',').map(c => {
         const [key, dir] = c.split('-');
@@ -220,16 +216,14 @@ function formatFlickCode(codeSeq) {
     }).join('');
 }
 
-// 濁点・半濁点・小文字を清音（基本のキー位置の文字）に戻す
-function normalizeToClean(str) {
+// フォールバック用（word_data.jsが読み込まれていない場合など）
+function normalizeToCleanFallback(str) {
     let res = "";
     for (let char of str) {
         let c = char;
-        // カタカナ -> ひらがな
         if (/[\u30a1-\u30f6]/.test(c)) {
             c = String.fromCharCode(c.charCodeAt(0) - 0x60);
         }
-        
         const map = {
             'が':'か', 'ぎ':'き', 'ぐ':'く', 'げ':'け', 'ご':'こ',
             'ざ':'さ', 'じ':'し', 'ず':'す', 'ぜ':'せ', 'ぞ':'そ',
