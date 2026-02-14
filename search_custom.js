@@ -162,10 +162,12 @@ function searchCustom() {
     const useStd = document.getElementById('useDictStandard_custom').checked;
     const usePig = document.getElementById('useDictPig_custom').checked;
     const useEng = document.getElementById('useDictEnglish_custom').checked;
-    // ★追加: イラスト辞書
     const useIll1 = document.getElementById('useDictIllustLv1_custom')?.checked;
     const useIll2 = document.getElementById('useDictIllustLv2_custom')?.checked;
     const useIll3 = document.getElementById('useDictIllustLv3_custom')?.checked;
+    
+    // ★追加
+    const looseMode = document.getElementById('looseMode_custom')?.checked;
 
     let targetWords = [];
     if (useStd) targetWords = targetWords.concat(dictStandard);
@@ -178,5 +180,5 @@ function searchCustom() {
 
     targetWords = [...new Set(targetWords)];
 
-    searchByShapeCommon(selectedCells, targetWords, customLayout, 'customResultArea');
+    searchByShapeCommon(selectedCells, targetWords, customLayout, 'customResultArea', looseMode);
 }
