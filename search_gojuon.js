@@ -92,36 +92,35 @@ function initGrid(gridId, canvasId, layout) {
     }, 100);
 }
 
-// 五十音表での検索（イベントハンドラから呼ばれる）
+// 五十音表での検索
 function searchGojuon() {
     const useStd = document.getElementById('useDictStandard').checked;
     const usePig = document.getElementById('useDictPig').checked;
-    // ★追加: イラスト辞書のチェック状態を取得
     const useIll1 = document.getElementById('useDictIllustLv1')?.checked;
     const useIll2 = document.getElementById('useDictIllustLv2')?.checked;
     const useIll3 = document.getElementById('useDictIllustLv3')?.checked;
+    
+    // ★追加: チェックボックス取得
+    const looseMode = document.getElementById('looseMode_gojuon')?.checked;
 
     let targetWords = [];
     if (useStd) targetWords = targetWords.concat(dictStandard);
     if (usePig) targetWords = targetWords.concat(dictPig);
-    
-    // ★追加: ターゲットに追加
     if (useIll1) targetWords = targetWords.concat(dictIllustLv1);
     if (useIll2) targetWords = targetWords.concat(dictIllustLv2);
     if (useIll3) targetWords = targetWords.concat(dictIllustLv3);
 
     targetWords = [...new Set(targetWords)];
 
-    searchByShapeCommon(selectedCells, targetWords, GOJUON_LAYOUT, 'gojuonResultArea');
+    // 引数の最後に looseMode を追加
+    searchByShapeCommon(selectedCells, targetWords, GOJUON_LAYOUT, 'gojuonResultArea', looseMode);
 }
 
-// ユーザーがトリガーする形状変更イベント用
 function searchByShape() {
     if(currentMode === 'gojuon') searchGojuon();
     else if(currentMode === 'custom') searchCustom();
 }
 
-// html側の古い関数名対応
 function resetGojuon() {
     if(typeof resetSelection === 'function') resetSelection();
 }
