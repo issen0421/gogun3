@@ -22,6 +22,7 @@
         <button class="tab-btn" onclick="switchTab('redone')">解き直し</button>
         <button class="tab-btn" onclick="switchTab('shift')">文字ずらし</button>
         <button class="tab-btn" onclick="switchTab('shift2')">文字ずらし2</button>
+        <button class="tab-btn" onclick="switchTab('flick')">フリック変換</button>
     </div>
 
     <!-- 語群検索タブ -->
@@ -304,6 +305,44 @@
 
 </div>
 
+    <!-- ★追加: フリック変換 検索タブ -->
+    <div id="tab-flick" class="tab-content">
+        <p class="description">
+            スマホのフリック入力（12キー）において、<br>
+            「英語」と「日本語」で指の動き（キーの位置とフリック方向）が<br>
+            一致する単語のペアをリストアップします。（例：A ＝ か）
+        </p>
+
+        <div class="search-box">
+            <div style="margin-bottom:10px; font-weight:bold; color:#555;">検索設定</div>
+            
+            <button class="tab-btn active" style="width:100%; padding: 12px; font-size:16px;" onclick="searchFlickPairs()">
+                対応する単語ペアを全検索
+            </button>
+
+            <div class="options">
+                <span class="opt-title">辞書:</span>
+                <label class="checkbox-label"><input type="checkbox" id="useDictStandard_flick" checked>一般</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictPig_flick">豚</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictEnglish_flick" checked>英</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv1_flick">画Lv.1</label>
+            </div>
+            <div class="options">
+                <span class="opt-title">オプション:</span>
+                <label class="checkbox-label" title="「が」を「か」と同じ扱いにして検索します">
+                    <input type="checkbox" id="ignoreDakutenFlick" checked>
+                    濁点・小文字を清音と同一視
+                </label>
+            </div>
+
+            <div id="flickCount" class="result-count">ボタンを押して検索してください</div>
+        </div>
+
+        <div id="flickResultArea" class="result-area"></div>
+    </div>
+
+</div>
+
 <!-- 詳細表示モーダル -->
 <div id="detailModal" class="modal">
     <div class="modal-content">
@@ -324,6 +363,7 @@
 <script src="search_redone.js"></script>
 <script src="search_shift.js"></script>
 <script src="search_shift2.js"></script>
+<script src="search_flick.js"></script>
 
 </body>
 </html>
