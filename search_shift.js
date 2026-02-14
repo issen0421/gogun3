@@ -71,6 +71,9 @@ function searchShift() {
 
     const allowAnagram = document.getElementById('allowAnagram').checked;
     const allowPlusMinus = document.getElementById('allowPlusMinus').checked;
+    
+    // ★追加: 濁点区別設定
+    const looseMode = document.getElementById('looseMode_shift')?.checked;
 
     resultArea.innerHTML = "";
 
@@ -123,22 +126,21 @@ function searchShift() {
     let results = [];
     let foundWordSet = new Set(); 
 
+    // 全単語リストを作成
+    let allWords = [];
+    if(useStd) allWords = allWords.concat(dictStandard);
+    if(usePig) allWords = allWords.concat(dictPig);
+    if(useEng) allWords = allWords.concat(dictEnglish);
+    if(useIll1) allWords = allWords.concat(dictIllustLv1);
+    if(useIll2) allWords = allWords.concat(dictIllustLv2);
+    if(useIll3) allWords = allWords.concat(dictIllustLv3);
+    
+    allWords = [...new Set(allWords)];
+
     // ============================================================
     //  モードA: ±同一視 (PlusMinus) が ON の場合
     // ============================================================
     if (allowPlusMinus) {
-        let allWords = [];
-        targetDictKeys.forEach(key => {
-            if (key === 'std') allWords = allWords.concat(dictStandard);
-            if (key === 'pig') allWords = allWords.concat(dictPig);
-            if (key === 'eng') allWords = allWords.concat(dictEnglish);
-            // ★追加
-            if (key === 'ill1') allWords = allWords.concat(dictIllustLv1);
-            if (key === 'ill2') allWords = allWords.concat(dictIllustLv2);
-            if (key === 'ill3') allWords = allWords.concat(dictIllustLv3);
-        });
-        allWords = [...new Set(allWords)];
-
         allWords.forEach(word => {
             if (word.length !== normalizedInput.length) return;
 
@@ -148,12 +150,27 @@ function searchShift() {
                 normalizedWord = word.toUpperCase();
             } else {
                 if (/^[a-zA-Z]+$/.test(word)) return;
+                // ★LooseMode対応: 比較用ターゲットを正規化する
+                // ShiftLogicは清音ベースなので、LooseならnormalizeToSequence(清音化)を使い、
+                // Strictなら生の単語（濁点あり）を比較対象にする必要があるが、
+                // distance計算には清音化が必要。
+                // そこで、まずは清音化して距離を計算し、マッチしたら最後に厳密チェックを行う。
                 normalizedWord = normalizeToSequence(word, sequence);
             }
 
             const checkResult = checkDistanceMatch(normalizedInput, normalizedWord, sequence, allowAnagram);
             
             if (checkResult.isMatch) {
+                // Strictモードの場合の追加チェック
+                if (!looseMode && !isAlphabet) {
+                    // 辞書の単語(word)に濁点が含まれていて、それが正規化で消えていた場合、
+                    // 「ずらして一致」とはみなさない（厳密には文字が違うため）。
+                    // 例: 入力「か」+1 -> 「き」。辞書「ぎ」。
+                    // normalizedWordは「き」なので距離一致するが、wordは「ぎ」。
+                    // strictなら「き」!=「ぎ」なので弾く。
+                    if (normalizeStrict(word) !== normalizedWord) return;
+                }
+
                 let diffStr = checkResult.diffString;
                 let subText = `(元: ${word})`;
 
@@ -183,22 +200,31 @@ function searchShift() {
                 shiftedString += sequence[shiftedIndex];
             }
 
-            targetDictKeys.forEach(key => {
-                if (!shiftIndexes[key]) return;
+            // shiftedString は常に清音
+            
+            allWords.forEach(word => {
+                if (word.length !== shiftedString.length) return;
                 
-                let matchedWords = [];
-                
-                if (allowAnagram) {
-                    const sorted = shiftedString.split('').sort().join('');
-                    const found = shiftIndexes[key].anagram[sorted];
-                    if (found) matchedWords = found;
+                let targetNorm = "";
+                if(isAlphabet) {
+                    if (!/^[a-zA-Z]+$/.test(word)) return;
+                    targetNorm = word.toUpperCase();
                 } else {
-                    if (shiftIndexes[key].set.has(shiftedString)) {
-                        matchedWords.push(shiftedString);
-                    }
+                    if (/^[a-zA-Z]+$/.test(word)) return;
+                    // ★LooseMode対応
+                    targetNorm = looseMode ? normalizeString(word) : normalizeStrict(word);
                 }
 
-                matchedWords.forEach(word => {
+                let isMatch = false;
+                if(allowAnagram) {
+                    const s1 = shiftedString.split('').sort().join('');
+                    const s2 = targetNorm.split('').sort().join('');
+                    if(s1 === s2) isMatch = true;
+                } else {
+                    if(shiftedString === targetNorm) isMatch = true;
+                }
+
+                if(isMatch) {
                     if (foundWordSet.has(word)) return;
                     foundWordSet.add(word);
 
@@ -215,7 +241,7 @@ function searchShift() {
                         word: word,
                         sortKey: shift
                     });
-                });
+                }
             });
         }
     }
