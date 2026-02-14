@@ -3,12 +3,6 @@
 const HIRAGANA_SEQ_S2 = "あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん";
 const ALPHABET_SEQ_S2 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-// キャッシュ用
-let shift2Index = {
-    allWords: new Set(),
-    isReady: false
-};
-
 function searchShift2() {
     const rawInput = document.getElementById('shift2Input').value.trim();
     const resultArea = document.getElementById('shift2ResultArea');
@@ -21,6 +15,9 @@ function searchShift2() {
     const useIll1 = document.getElementById('useDictIllustLv1_shift2')?.checked;
     const useIll2 = document.getElementById('useDictIllustLv2_shift2')?.checked;
     const useIll3 = document.getElementById('useDictIllustLv3_shift2')?.checked;
+    
+    // ★追加: 濁点区別設定
+    const looseMode = document.getElementById('looseMode_shift2')?.checked;
 
     resultArea.innerHTML = "";
 
@@ -60,7 +57,8 @@ function searchShift2() {
     // 高速検索用にSetを作成
     const wordSet = new Set();
     candidateWords.forEach(w => {
-        wordSet.add(normalizeForShift2(w));
+        // ★修正: looseModeに応じて正規化を変える
+        wordSet.add(normalizeForShift2(w, looseMode));
     });
 
     let foundPairs = [];
@@ -68,18 +66,20 @@ function searchShift2() {
 
     // 全候補単語についてチェック
     candidateWords.forEach(wordA => {
-        const normA = normalizeForShift2(wordA);
+        // ★修正: wordA自体もlooseModeに応じたキーとして扱う
+        const normA = normalizeForShift2(wordA, looseMode);
         const isAlphabet = /^[a-zA-Z]+$/.test(wordA);
         const sequence = isAlphabet ? ALPHABET_SEQ_S2 : HIRAGANA_SEQ_S2;
 
         let wordBChars = "";
         let isValidShift = true;
-        let shiftDisplayHtmls = []; // 表示用のHTML部品を貯める配列
+        let shiftDisplayHtmls = []; 
 
         for (let i = 0; i < normA.length; i++) {
             const char = normA[i];
             const idx = sequence.indexOf(char);
             
+            // シーケンスにない文字（looseMode=false時の濁点など）は対象外
             if (idx === -1) {
                 isValidShift = false;
                 break;
@@ -91,12 +91,10 @@ function searchShift2() {
             
             wordBChars += sequence[shiftedIdx];
 
-            // ★ループ判定ロジック
-            // 「単純計算したインデックス」と「丸め込み後のインデックス」が異なればループ
+            // ループ判定
             const rawDest = idx + shift;
             const isLoop = (rawDest !== shiftedIdx);
 
-            // 表示用HTML作成
             let sign = shift >= 0 ? "+" : "";
             let text = sign + shift;
             let html = text;
@@ -110,10 +108,15 @@ function searchShift2() {
 
         if (!isValidShift) return;
 
+        // 生成された WordB が辞書に存在するか？
         if (wordSet.has(wordBChars)) {
-            let originalWordB = candidateWords.find(w => normalizeForShift2(w) === wordBChars);
+            // 見つかった！
+            // 表示用に元の表記を探す
+            // Setには正規化文字しか入っていないため、候補リストから探す。
+            let originalWordB = candidateWords.find(w => normalizeForShift2(w, looseMode) === wordBChars);
             if (!originalWordB) originalWordB = wordBChars; 
 
+            // 自分自身への変換は除外する
             if (wordA === originalWordB) return;
 
             const pairKey = `${wordA}:${originalWordB}`;
@@ -123,11 +126,12 @@ function searchShift2() {
             foundPairs.push({
                 from: wordA,
                 to: originalWordB,
-                shiftHtmls: shiftDisplayHtmls // HTML配列を保存
+                shiftHtmls: shiftDisplayHtmls 
             });
         }
     });
 
+    // 結果表示
     if (foundPairs.length === 0) {
         countEl.innerText = "条件に合うペアは見つかりませんでした";
         resultArea.innerHTML = `<div class="no-result">見つかりませんでした</div>`;
@@ -157,33 +161,13 @@ function searchShift2() {
     });
 }
 
-function normalizeForShift2(str) {
-    if (/^[a-zA-Z]+$/.test(str)) {
-        return str.toUpperCase();
+// 正規化関数 (word_data.js の共通関数を利用)
+// 互換性のためここにラッパーを置く
+function normalizeForShift2(str, isLoose) {
+    if (typeof normalizeString === 'function' && typeof normalizeStrict === 'function') {
+        return isLoose ? normalizeString(str) : normalizeStrict(str);
     }
-    let res = "";
-    const seq = HIRAGANA_SEQ_S2;
-    for (let char of str) {
-        if (seq.includes(char)) {
-            res += char;
-            continue;
-        }
-        let normalizedChar = char;
-        if (/[\u30a1-\u30f6]/.test(char)) {
-            normalizedChar = String.fromCharCode(char.charCodeAt(0) - 0x60);
-        }
-        const map = {
-            'が':'か', 'ぎ':'き', 'ぐ':'く', 'げ':'け', 'ご':'こ',
-            'ざ':'さ', 'じ':'し', 'ず':'す', 'ぜ':'せ', 'ぞ':'そ',
-            'だ':'た', 'ぢ':'ち', 'づ':'つ', 'で':'て', 'ど':'と',
-            'ば':'は', 'び':'ひ', 'ぶ':'ふ', 'べ':'へ', 'ぼ':'ほ',
-            'ぱ':'は', 'ぴ':'ひ', 'ぷ':'ふ', 'ぺ':'へ', 'ぽ':'ほ',
-            'ぁ':'あ', 'ぃ':'い', 'ぅ':'う', 'ぇ':'え', 'ぉ':'お',
-            'っ':'つ', 'ゃ':'や', 'ゅ':'ゆ', 'ょ':'よ', 'ゎ':'わ',
-            'ゔ':'う', 'ゐ':'い', 'ゑ':'え'
-        };
-        if (map[normalizedChar]) normalizedChar = map[normalizedChar];
-        res += normalizedChar;
-    }
-    return res;
+    // フォールバック（word_data.jsが読み込まれていない場合など）
+    if (/^[a-zA-Z]+$/.test(str)) return str.toUpperCase();
+    return str; // 日本語正規化は省略
 }
