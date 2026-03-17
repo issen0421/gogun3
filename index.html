@@ -22,6 +22,8 @@
         <button class="tab-btn" onclick="switchTab('shift')">文字ずらし</button>
         <button class="tab-btn" onclick="switchTab('shift2')">文字ずらし2</button>
         <button class="tab-btn" onclick="switchTab('flick')">フリック変換</button>
+        <!-- ★追加 -->
+        <button class="tab-btn" onclick="switchTab('anagram')">アナグラム</button>
     </div>
 
     <!-- 語群検索タブ -->
@@ -90,7 +92,6 @@
                 <label class="checkbox-label"><input type="checkbox" id="allowRotation" onchange="searchByShape()">回転OK</label>
                 <label class="checkbox-label"><input type="checkbox" id="allowReflection" onchange="searchByShape()">反転OK</label>
             </div>
-            <!-- ★追加 -->
             <div class="options">
                 <label class="checkbox-label">
                     <input type="checkbox" id="looseMode_gojuon" onchange="searchByShape()">
@@ -144,7 +145,6 @@
                 <label class="checkbox-label"><input type="checkbox" id="allowRotation_custom" onchange="searchByShape()">回転OK</label>
                 <label class="checkbox-label"><input type="checkbox" id="allowReflection_custom" onchange="searchByShape()">反転OK</label>
             </div>
-            <!-- ★追加 -->
             <div class="options">
                 <label class="checkbox-label">
                     <input type="checkbox" id="looseMode_custom" onchange="searchByShape()">
@@ -204,7 +204,6 @@
                 <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv2_custom2">画Lv.2</label>
                 <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv3_custom2">画Lv.3</label>
             </div>
-            <!-- ★追加 -->
             <div class="options">
                 <label class="checkbox-label">
                     <input type="checkbox" id="looseMode_custom2">
@@ -275,7 +274,6 @@
                  <label class="checkbox-label"><input type="checkbox" id="allowPlusMinus" oninput="searchShift()">±同一視</label>
                  <label class="checkbox-label"><input type="checkbox" id="allowAnagram" oninput="searchShift()">並び替え(アナグラム)</label>
             </div>
-            <!-- ★追加 -->
             <div class="options">
                 <label class="checkbox-label">
                     <input type="checkbox" id="looseMode_shift" oninput="searchShift()">
@@ -310,7 +308,6 @@
                 <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv2_shift2" onchange="searchShift2()">画Lv.2</label>
                 <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv3_shift2" onchange="searchShift2()">画Lv.3</label>
             </div>
-            <!-- ★追加 -->
             <div class="options">
                 <label class="checkbox-label">
                     <input type="checkbox" id="looseMode_shift2" onchange="searchShift2()">
@@ -345,7 +342,6 @@
                 <label class="checkbox-label"><input type="checkbox" id="useDictEnglish_flick" checked>英</label>
                 <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv1_flick">画Lv.1</label>
             </div>
-            <!-- ★修正: IDを統一感のあるものに変更 -->
             <div class="options">
                 <label class="checkbox-label">
                     <input type="checkbox" id="looseMode_flick" checked>
@@ -357,6 +353,46 @@
         </div>
 
         <div id="flickResultArea" class="result-area"></div>
+    </div>
+
+    <!-- ★追加: アナグラム検索タブ -->
+    <div id="tab-anagram" class="tab-content">
+        <p class="description">
+            「いんせき(1234)」→「きんせい(4231)」のように、<br>
+            文字を入れ替えたり抽出したりして別の単語になるペアを探します。
+        </p>
+
+        <div class="search-box">
+            <div style="display:flex; justify-content: center; align-items: center; gap:10px; margin-bottom:10px;">
+                <input type="text" id="anagramFrom" placeholder="変換前 (例: 1234)" style="width:140px; text-align:center;">
+                <span style="font-size:20px; font-weight:bold;">→</span>
+                <input type="text" id="anagramTo" placeholder="変換後 (例: 4231 や 134)" style="width:180px; text-align:center;">
+                <button class="tab-btn active" style="margin-left:10px; padding: 5px 15px;" onclick="searchAnagram()">検索</button>
+            </div>
+            <div style="font-size:12px; color:#888; margin-bottom:10px;">
+                ※ 数字を並べて入力してください。10以上の数字を使う場合は「1 2 10」のように空白で区切ってください。
+            </div>
+
+            <div class="options">
+                <span class="opt-title">辞書:</span>
+                <label class="checkbox-label"><input type="checkbox" id="useDictStandard_anagram" checked>一般</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictPig_anagram">豚</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictEnglish_anagram" checked>英</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv1_anagram">画Lv.1</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv2_anagram">画Lv.2</label>
+                <label class="checkbox-label"><input type="checkbox" id="useDictIllustLv3_anagram">画Lv.3</label>
+            </div>
+            <div class="options">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="looseMode_anagram">
+                    濁音・半濁音・拗音を区別しない
+                </label>
+            </div>
+
+            <div id="anagramCount" class="result-count">数字を入力して検索してください</div>
+        </div>
+
+        <div id="anagramResultArea" class="result-area"></div>
     </div>
 
 </div>
@@ -382,6 +418,7 @@
 <script src="search_shift.js"></script>
 <script src="search_shift2.js"></script>
 <script src="search_flick.js"></script>
+<script src="search_anagram.js"></script> <!-- ★追加 -->
 
 </body>
 </html>
