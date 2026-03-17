@@ -60,7 +60,12 @@ function searchAnagram() {
     for (let group of seqToGroups) {
         for (let num of group) {
             if (!seqFrom.includes(num)) {
-                countEl.innerText = `エラー: 変換後の数字「${num}」が変換前に存在しません`;
+                // ★エラーメッセージを親切に改良
+                if (num >= 10 && seqFrom.length < 10) {
+                    countEl.innerHTML = `<span style="color:#e74c3c; font-weight:bold;">エラー: 変換後の数字「${num}」が変換前に存在しません。</span><br><span style="font-size:12px;">※複数の単語に分ける場合は<b>「スペース」ではなく「カンマ( , )」</b>で区切ってください。</span>`;
+                } else {
+                    countEl.innerHTML = `<span style="color:#e74c3c;">エラー: 変換後の数字「${num}」が変換前に存在しません</span>`;
+                }
                 return;
             }
         }
