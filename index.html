@@ -354,24 +354,25 @@
         <div id="flickResultArea" class="result-area"></div>
     </div>
 
-    <!-- アナグラム検索タブ -->
+    <!-- ★更新: アナグラム検索タブ -->
     <div id="tab-anagram" class="tab-content">
         <p class="description">
-            「いんせき(1234)」→「きんせい(4231)」のように、<br>
-            文字を入れ替えたり抽出して別の単語になるペアを探します。
+            数字（並び替え）と固定文字を組み合わせて、別の単語になるペアを探します。<br>
+            例1：「12345」→「135, 24」で複数単語に分割。<br>
+            例2：「あ12」→「お21」で特定の文字だけ置き換え。
         </p>
 
         <div class="search-box">
             <div style="display:flex; justify-content: center; align-items: center; gap:10px; margin-bottom:10px;">
-                <input type="text" id="anagramFrom" placeholder="変換前 (例: 12345)" style="width:150px; text-align:center;">
+                <input type="text" id="anagramFrom" placeholder="変換前 (例: 12345 または あ12)" style="width:200px; text-align:center;">
                 <span style="font-size:20px; font-weight:bold;">→</span>
-                <input type="text" id="anagramTo" placeholder="変換後 (例: 135, 24)" style="width:200px; text-align:center;">
+                <input type="text" id="anagramTo" placeholder="変換後 (例: 135,24 または お21)" style="width:240px; text-align:center;">
                 <button class="tab-btn active" style="margin-left:10px; padding: 5px 15px;" onclick="searchAnagram()">検索</button>
             </div>
             <div style="font-size:12px; color:#888; margin-bottom:15px; text-align:left; display:inline-block;">
-                ※ 数字を並べて入力してください。<br>
+                ※ 数字を並べて入力してください。「あ12 → お21」のように文字を含めることもできます。<br>
                 ※ 複数の単語を作る場合は「135, 24」のように<b>カンマ( , )</b>で区切ってください。<br>
-                ※ 10以上の数字を使う場合は「1 2 10, 3 4」のように空白で区切ってください。
+                ※ 10以上の数字を使う場合は「1 2 10」のように空白で区切ってください。
             </div>
 
             <div class="options">
@@ -390,7 +391,7 @@
                 </label>
             </div>
 
-            <div id="anagramCount" class="result-count">数字を入力して検索してください</div>
+            <div id="anagramCount" class="result-count">数字や文字を入力して検索してください</div>
         </div>
 
         <div id="anagramResultArea" class="result-area"></div>
