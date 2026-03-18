@@ -1,4 +1,4 @@
-// アナグラム（抽出・並び替え・分割）検索用スクリプト
+// アナグラム（抽出・並び替え・固定文字組み合わせ）検索用スクリプト
 
 function searchAnagram() {
     const rawFrom = document.getElementById('anagramFrom').value.trim();
@@ -20,51 +20,67 @@ function searchAnagram() {
     resultArea.innerHTML = "";
 
     if (!rawFrom || !rawTo) {
-        countEl.innerText = "変換前と変換後の数字を入力してください";
+        countEl.innerText = "変換前と変換後の条件を入力してください";
         return;
     }
 
-    // 文字列を数字の配列にパースする関数
+    // 文字列を「変数(数字)」と「固定文字」の配列にパースする関数
     const parseGroup = (str) => {
         let s = str.replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)).trim();
-        // 空白が含まれている場合は空白区切り、そうでなければ1文字ずつ区切る
+        let tokens = [];
+        
+        // スペースが含まれていればスペース区切り、なければ1文字ずつ区切る
         if (/[\s]/.test(s)) {
-            return s.split(/\s+/).map(n => parseInt(n, 10)).filter(n => !isNaN(n));
+            tokens = s.split(/\s+/).filter(t => t);
         } else {
-            return s.split('').map(n => parseInt(n, 10)).filter(n => !isNaN(n));
+            tokens = s.split('').filter(t => t);
         }
+        
+        // 数字なら「変数(var)」、それ以外なら「文字(char)」として判定
+        return tokens.map(t => {
+            if (/^\d+$/.test(t)) {
+                return { type: 'var', id: parseInt(t, 10), raw: t };
+            } else {
+                return { type: 'char', char: t, raw: t };
+            }
+        });
     };
 
-    // 変換前の数字列
-    const seqFrom = parseGroup(rawFrom);
+    // 変換前
+    const parsedFromGroup = parseGroup(rawFrom);
     
-    // 変換後の数字列（カンマや＋などで複数のグループに分割対応）
-    // 例: "135, 24" -> "135", " 24"
+    // 変換後（カンマや＋などで複数のグループに分割対応）
     const toGroupsRaw = rawTo.replace(/[，、＋+／/]/g, ',').split(',');
-    const seqToGroups = [];
+    const parsedToGroups = [];
     
     for (let g of toGroupsRaw) {
         if (!g.trim()) continue;
-        const seq = parseGroup(g);
-        if (seq.length > 0) {
-            seqToGroups.push(seq);
+        const parsed = parseGroup(g);
+        if (parsed.length > 0) {
+            parsedToGroups.push(parsed);
         }
     }
 
-    if (seqFrom.length === 0 || seqToGroups.length === 0) {
-        countEl.innerText = "数字が正しく読み取れませんでした";
+    if (parsedFromGroup.length === 0 || parsedToGroups.length === 0) {
+        countEl.innerText = "入力が正しく読み取れませんでした";
         return;
     }
 
-    // 全ての変換後の数字が、変換前(seqFrom)に存在するかチェック
-    for (let group of seqToGroups) {
-        for (let num of group) {
-            if (!seqFrom.includes(num)) {
-                // ★エラーメッセージを親切に改良
-                if (num >= 10 && seqFrom.length < 10) {
-                    countEl.innerHTML = `<span style="color:#e74c3c; font-weight:bold;">エラー: 変換後の数字「${num}」が変換前に存在しません。</span><br><span style="font-size:12px;">※複数の単語に分ける場合は<b>「スペース」ではなく「カンマ( , )」</b>で区切ってください。</span>`;
+    // Fromに含まれる変数ID(数字)のリストを作成
+    const fromVarIds = new Set();
+    parsedFromGroup.forEach(t => {
+        if (t.type === 'var') fromVarIds.add(t.id);
+    });
+
+    // To(変換後)で使われている変数が、ちゃんとFrom(変換前)に存在するかチェック
+    for (let group of parsedToGroups) {
+        for (let t of group) {
+            if (t.type === 'var' && !fromVarIds.has(t.id)) {
+                // ★エラーメッセージを親切に表示
+                if (t.id >= 10 && parsedFromGroup.length < 10) {
+                    countEl.innerHTML = `<span style="color:#e74c3c; font-weight:bold;">エラー: 変換後の数字「${t.id}」が変換前に存在しません。</span><br><span style="font-size:12px;">※複数の単語に分ける場合は<b>「スペース」ではなく「カンマ( , )」</b>で区切ってください。</span>`;
                 } else {
-                    countEl.innerHTML = `<span style="color:#e74c3c;">エラー: 変換後の数字「${num}」が変換前に存在しません</span>`;
+                    countEl.innerHTML = `<span style="color:#e74c3c;">エラー: 変換後の数字「${t.id}」が変換前に存在しません</span>`;
                 }
                 return;
             }
@@ -85,21 +101,19 @@ function searchAnagram() {
         return;
     }
 
-    // 重複を排除
     targetWords = [...new Set(targetWords)];
 
-    // 検索高速化用マップ (Key: 正規化単語, Value: 元の単語の配列)
-    // ※複数の元の単語が同じ正規化キーになる可能性があるため（例：かば、がば）
+    // 検索高速化用マップ (Key: 正規化単語, Value: 元の単語)
     const wordMapTo = new Map();
     targetWords.forEach(w => {
         const norm = normalizeForAnagram(w, looseMode);
         if (!wordMapTo.has(norm)) {
-            wordMapTo.set(norm, w); // 代表として1つだけ保持する（処理速度優先）
+            wordMapTo.set(norm, w); // 複数ある場合は代表として1つだけ保持
         }
     });
 
-    const lenFrom = seqFrom.length;
     // 変換前の長さに合う単語だけ抽出
+    const lenFrom = parsedFromGroup.length;
     const wordsFrom = targetWords.filter(w => w.length === lenFrom);
 
     let foundPairs = [];
@@ -111,27 +125,50 @@ function searchAnagram() {
     wordsFrom.forEach(wordA => {
         const normA = normalizeForAnagram(wordA, looseMode);
         
-        let targetWordsGroup = [];
         let isValid = true;
-        
-        // 各単語グループについて検証
-        for (let seqTo of seqToGroups) {
-            let wordB_norm = "";
-            for (let num of seqTo) {
-                // seqFrom の何番目にある数字かを取得
-                // （例: seqFrom=[1,2,3,4,5], num=3 -> idx=2 -> normA[2]）
-                let idx = seqFrom.indexOf(num); 
-                if (idx === -1 || idx >= normA.length) {
-                    isValid = false; 
+        let varMap = new Map(); // 数字ID -> 抽出された文字
+
+        // 1. Fromグループ(変換前)の条件に当てはまるかチェックし、文字を抽出
+        for (let i = 0; i < parsedFromGroup.length; i++) {
+            const t = parsedFromGroup[i];
+            if (t.type === 'char') {
+                // 固定文字のチェック（「あ12」の「あ」に当たる部分が一致しているか）
+                const normChar = normalizeForAnagram(t.char, looseMode);
+                if (normA[i] !== normChar) {
+                    isValid = false;
                     break;
                 }
-                wordB_norm += normA[idx];
+            } else if (t.type === 'var') {
+                // 変数(数字)への文字割り当て
+                if (varMap.has(t.id)) {
+                    // 同じ数字が複数回使われている場合は、同じ文字が入っていなければ無効
+                    if (varMap.get(t.id) !== normA[i]) {
+                        isValid = false; 
+                        break;
+                    }
+                } else {
+                    varMap.set(t.id, normA[i]);
+                }
             }
-            if (!isValid) break;
+        }
 
-            // 抽出した文字列が辞書に存在するか？
-            if (wordMapTo.has(wordB_norm)) {
-                targetWordsGroup.push(wordMapTo.get(wordB_norm));
+        if (!isValid) return;
+
+        let targetWordsGroup = [];
+        
+        // 2. Toグループ(変換後)の文字列を生成し、辞書にあるかチェック
+        for (let toGroup of parsedToGroups) {
+            let normB = "";
+            for (let t of toGroup) {
+                if (t.type === 'char') {
+                    normB += normalizeForAnagram(t.char, looseMode);
+                } else if (t.type === 'var') {
+                    normB += varMap.get(t.id);
+                }
+            }
+
+            if (wordMapTo.has(normB)) {
+                targetWordsGroup.push(wordMapTo.get(normB));
             } else {
                 isValid = false;
                 break;
@@ -149,8 +186,7 @@ function searchAnagram() {
             seenPairs.add(pairKey);
             foundPairs.push({
                 from: wordA,
-                toGroup: targetWordsGroup,
-                seqToGroups: seqToGroups // 表示用
+                toGroup: targetWordsGroup
             });
         }
     });
@@ -163,17 +199,19 @@ function searchAnagram() {
 
     countEl.innerText = `${foundPairs.length}組のパターンが見つかりました`;
 
-    // 数字配列を文字列化する関数（10以上が含まれていればスペース区切り）
-    const formatSeq = (arr) => arr.join(arr.some(n => n >= 10) ? ' ' : '');
+    // 表示用にトークン配列を文字列化する関数
+    const formatTokens = (tokens) => {
+        const hasDoubleDigit = tokens.some(t => t.type === 'var' && t.id >= 10);
+        return tokens.map(t => t.raw).join(hasDoubleDigit ? ' ' : '');
+    };
 
     // 結果の描画
     foundPairs.forEach(pair => {
         const card = document.createElement('div');
         card.className = 'group-card match-perfect';
         
-        const dispFrom = formatSeq(seqFrom);
-        // 複数グループがある場合は「+」で繋ぐ
-        const dispTo = pair.seqToGroups.map(formatSeq).join(' + ');
+        const dispFrom = formatTokens(parsedFromGroup);
+        const dispTo = parsedToGroups.map(formatTokens).join(' + ');
 
         // 変換後の単語群のHTML
         const toWordsHtml = pair.toGroup
