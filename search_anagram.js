@@ -1,4 +1,9 @@
-// アナグラム（抽出・並び替え・固定文字組み合わせ）検索用スクリプト
+// アナグラム（抽出・並び替え・固定文字組み合わせ・ワイルドカード）検索用スクリプト
+
+// 正規表現の特殊文字をエスケープする関数
+function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
 function searchAnagram() {
     const rawFrom = document.getElementById('anagramFrom').value.trim();
@@ -14,7 +19,6 @@ function searchAnagram() {
     const useIll2 = document.getElementById('useDictIllustLv2_anagram')?.checked;
     const useIll3 = document.getElementById('useDictIllustLv3_anagram')?.checked;
     
-    // 濁音等の区別設定
     const looseMode = document.getElementById('looseMode_anagram')?.checked;
 
     resultArea.innerHTML = "";
@@ -24,25 +28,27 @@ function searchAnagram() {
         return;
     }
 
-    // ★賢いパース関数（文字と数字を自動で仕分ける）
+    // ★パース関数（文字、数字、ワイルドカードを仕分ける）
     const parseGroup = (str) => {
-        // 全角数字を半角に変換
-        let s = str.replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)).trim();
+        // 全角数字を半角に、全角アスタリスクなどを半角 * に変換
+        let s = str.replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0))
+                   .replace(/[＊×✕]/g, '*')
+                   .trim();
         let tokens = [];
         
-        // スペースが含まれているかどうかで挙動を変える
         const hasSpace = /[\s]/.test(s);
         
         if (hasSpace) {
-            // スペースがある場合（「あ 10 2」のように10以上を扱う想定）
             const blocks = s.split(/\s+/).filter(t => t);
             blocks.forEach(block => {
-                // ブロック内の「連続する数字」と「それ以外の文字」を分離
+                // 数字の塊、またはそれ以外の1文字に分解
                 let matches = block.match(/\d+|[^\d]/g);
                 if (matches) {
                     matches.forEach(m => {
                         if (/^\d+$/.test(m)) {
                             tokens.push({ type: 'var', id: parseInt(m, 10), raw: m });
+                        } else if (m === '*') {
+                            tokens.push({ type: 'wildcard', raw: m });
                         } else {
                             tokens.push({ type: 'char', char: m, raw: m });
                         }
@@ -50,11 +56,12 @@ function searchAnagram() {
                 }
             });
         } else {
-            // スペースがない場合（「あ12」や「1234」など）は、完全に1文字ずつ区切る
             const chars = s.split('');
             chars.forEach(ch => {
                 if (/^\d$/.test(ch)) {
                     tokens.push({ type: 'var', id: parseInt(ch, 10), raw: ch });
+                } else if (ch === '*') {
+                    tokens.push({ type: 'wildcard', raw: ch });
                 } else {
                     tokens.push({ type: 'char', char: ch, raw: ch });
                 }
@@ -66,8 +73,7 @@ function searchAnagram() {
     // 変換前
     const parsedFromGroup = parseGroup(rawFrom);
     
-    // 変換後（カンマや＋などで複数のグループに分割対応）
-    // ★バグ修正: カンマをスペースに変換する処理を削除し、正しく分割するようにしました
+    // 変換後（カンマで複数グループに分割）
     const toGroupsRaw = rawTo.replace(/[，、＋+／/]/g, ',').split(',');
     const parsedToGroups = [];
     
@@ -90,7 +96,7 @@ function searchAnagram() {
         if (t.type === 'var') fromVarIds.add(t.id);
     });
 
-    // To(変換後)で使われている変数が、ちゃんとFrom(変換前)に存在するかチェック
+    // To(変換後)で使われている変数が、From(変換前)に存在するかチェック
     for (let group of parsedToGroups) {
         for (let t of group) {
             if (t.type === 'var' && !fromVarIds.has(t.id)) {
@@ -120,18 +126,31 @@ function searchAnagram() {
 
     targetWords = [...new Set(targetWords)];
 
-    // 検索高速化用マップ (Key: 正規化単語, Value: 元の単語)
-    const wordMapTo = new Map();
+    // 検索高速化用：単語の「長さ」ごとに辞書を分ける
+    const wordsByLen = new Map();
+    const normWordsByLen = new Map();
+    
     targetWords.forEach(w => {
-        const norm = normalizeForAnagram(w, looseMode);
-        if (!wordMapTo.has(norm)) {
-            wordMapTo.set(norm, w); 
+        const len = w.length;
+        if (!wordsByLen.has(len)) {
+            wordsByLen.set(len, []);
+            normWordsByLen.set(len, []);
         }
+        wordsByLen.get(len).push(w);
+        normWordsByLen.get(len).push({ word: w, norm: normalizeForAnagram(w, looseMode) });
     });
 
-    // 変換前の長さに合う単語だけ抽出
     const lenFrom = parsedFromGroup.length;
-    const wordsFrom = targetWords.filter(w => w.length === lenFrom);
+    const wordsFrom = wordsByLen.get(lenFrom) || [];
+
+    // 変換後グループごとの事前情報（ワイルドカードの有無、長さなど）
+    const toGroupInfo = parsedToGroups.map(toGroup => {
+        return {
+            tokens: toGroup,
+            hasWildcard: toGroup.some(t => t.type === 'wildcard'),
+            len: toGroup.length
+        };
+    });
 
     let foundPairs = [];
     let seenPairs = new Set(); 
@@ -149,16 +168,13 @@ function searchAnagram() {
         for (let i = 0; i < parsedFromGroup.length; i++) {
             const t = parsedFromGroup[i];
             if (t.type === 'char') {
-                // 固定文字のチェック（例：「あ12」の「あ」に当たる部分が一致しているか）
                 const normChar = normalizeForAnagram(t.char, looseMode);
                 if (normA[i] !== normChar) {
                     isValid = false;
                     break;
                 }
             } else if (t.type === 'var') {
-                // 変数(数字)への文字割り当て
                 if (varMap.has(t.id)) {
-                    // 同じ数字が複数回使われている場合は、同じ文字が入っていなければ無効
                     if (varMap.get(t.id) !== normA[i]) {
                         isValid = false; 
                         break;
@@ -166,48 +182,89 @@ function searchAnagram() {
                 } else {
                     varMap.set(t.id, normA[i]);
                 }
+            } else if (t.type === 'wildcard') {
+                // ワイルドカードの場合は何でもOKなのでスルー
             }
         }
 
         if (!isValid) return;
 
-        let targetWordsGroup = [];
+        // 2. Toグループ(変換後)の条件を満たす単語候補を取得する
+        // targetWordsGroupOptions は、各 Toグループ ごとに「見つかった単語の配列」を入れる配列
+        // 例: [ ["かば", "がば"], ["たらこ"] ]
+        let targetWordsGroupOptions = []; 
         
-        // 2. Toグループ(変換後)の文字列を生成し、辞書にあるかチェック
-        for (let toGroup of parsedToGroups) {
-            let normB = "";
-            for (let t of toGroup) {
-                if (t.type === 'char') {
-                    // 固定文字はそのまま結合
-                    normB += normalizeForAnagram(t.char, looseMode);
-                } else if (t.type === 'var') {
-                    // 変数の場合は格納された文字を結合
-                    normB += varMap.get(t.id);
+        for (let info of toGroupInfo) {
+            let matchedOptions = [];
+            
+            if (info.hasWildcard) {
+                // ★ワイルドカードがある場合：正規表現を作って検索
+                let regexStr = "^";
+                for (let t of info.tokens) {
+                    if (t.type === 'char') regexStr += escapeRegExp(normalizeForAnagram(t.char, looseMode));
+                    else if (t.type === 'var') regexStr += escapeRegExp(varMap.get(t.id));
+                    else if (t.type === 'wildcard') regexStr += "."; // 任意の1文字
+                }
+                regexStr += "$";
+                const regex = new RegExp(regexStr);
+                
+                const candidates = normWordsByLen.get(info.len) || [];
+                let localSeen = new Set();
+                
+                candidates.forEach(item => {
+                    if (regex.test(item.norm)) {
+                        // 重複排除（同じ正規化文字列になる単語は代表1つだけ）
+                        if (!localSeen.has(item.norm)) {
+                            localSeen.add(item.norm);
+                            matchedOptions.push(item.word);
+                        }
+                    }
+                });
+            } else {
+                // ワイルドカードがない場合：文字列を組み立てて完全一致検索
+                let normB = "";
+                for (let t of info.tokens) {
+                    if (t.type === 'char') normB += normalizeForAnagram(t.char, looseMode);
+                    else if (t.type === 'var') normB += varMap.get(t.id);
+                }
+                
+                const candidates = normWordsByLen.get(info.len) || [];
+                const foundItem = candidates.find(item => item.norm === normB);
+                if (foundItem) {
+                    matchedOptions.push(foundItem.word); // 代表1つ
                 }
             }
 
-            if (wordMapTo.has(normB)) {
-                targetWordsGroup.push(wordMapTo.get(normB));
-            } else {
+            // 1つでも単語が見つからなかったら、この From単語 は不成立
+            if (matchedOptions.length === 0) {
                 isValid = false;
                 break;
             }
+            targetWordsGroupOptions.push(matchedOptions);
         }
 
         if (!isValid) return;
 
-        // 自分自身への変換のみの場合は除外
-        if (targetWordsGroup.length === 1 && wordA === targetWordsGroup[0]) return;
+        // 3. 各グループの候補の「全ての組み合わせ（直積）」を生成する
+        // 例: [[A1, A2], [B1]] -> [[A1, B1], [A2, B1]]
+        const combinations = targetWordsGroupOptions.reduce((acc, curr) => {
+            return acc.flatMap(d => curr.map(e => [...d, e]));
+        }, [[]]);
 
-        // ペアを保存
-        const pairKey = `${wordA}:${targetWordsGroup.join(',')}`;
-        if (!seenPairs.has(pairKey)) {
-            seenPairs.add(pairKey);
-            foundPairs.push({
-                from: wordA,
-                toGroup: targetWordsGroup
-            });
-        }
+        // 全ての組み合わせを結果に登録
+        combinations.forEach(combo => {
+            // 変換前後で全く同じ単語1つのペアになる場合は除外
+            if (combo.length === 1 && wordA === combo[0]) return;
+
+            const pairKey = `${wordA}:${combo.join(',')}`;
+            if (!seenPairs.has(pairKey)) {
+                seenPairs.add(pairKey);
+                foundPairs.push({
+                    from: wordA,
+                    toGroup: combo
+                });
+            }
+        });
     });
 
     if (foundPairs.length === 0) {
@@ -232,7 +289,6 @@ function searchAnagram() {
         const dispFrom = formatTokens(parsedFromGroup);
         const dispTo = parsedToGroups.map(formatTokens).join(' + ');
 
-        // 変換後の単語群のHTML
         const toWordsHtml = pair.toGroup
             .map(w => `<span class="word-item" style="font-size:1.3em;">${w}</span>`)
             .join('<span style="margin: 0 5px; color:#aaa; font-size:1.2em;">＋</span>');
@@ -251,12 +307,10 @@ function searchAnagram() {
     });
 }
 
-// 共通の正規化関数を利用するラッパー関数
 function normalizeForAnagram(str, isLoose) {
     if (typeof normalizeString === 'function' && typeof normalizeStrict === 'function') {
         return isLoose ? normalizeString(str) : normalizeStrict(str);
     }
-    // フォールバック
     if (/^[a-zA-Z]+$/.test(str)) return str.toUpperCase();
     return str;
 }
