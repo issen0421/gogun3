@@ -24,32 +24,50 @@ function searchAnagram() {
         return;
     }
 
-    // 文字列を「変数(数字)」と「固定文字」の配列にパースする関数
+    // ★賢いパース関数（文字と数字を自動で仕分ける）
     const parseGroup = (str) => {
+        // 全角数字を半角に変換
         let s = str.replace(/[０-９]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xFEE0)).trim();
         let tokens = [];
         
-        // スペースが含まれていればスペース区切り、なければ1文字ずつ区切る
-        if (/[\s]/.test(s)) {
-            tokens = s.split(/\s+/).filter(t => t);
-        } else {
-            tokens = s.split('').filter(t => t);
-        }
+        // スペースが含まれているかどうかで挙動を変える
+        const hasSpace = /[\s]/.test(s);
         
-        // 数字なら「変数(var)」、それ以外なら「文字(char)」として判定
-        return tokens.map(t => {
-            if (/^\d+$/.test(t)) {
-                return { type: 'var', id: parseInt(t, 10), raw: t };
-            } else {
-                return { type: 'char', char: t, raw: t };
-            }
-        });
+        if (hasSpace) {
+            // スペースがある場合（「あ 10 2」のように10以上を扱う想定）
+            const blocks = s.split(/\s+/).filter(t => t);
+            blocks.forEach(block => {
+                // ブロック内の「連続する数字」と「それ以外の文字」を分離
+                let matches = block.match(/\d+|[^\d]/g);
+                if (matches) {
+                    matches.forEach(m => {
+                        if (/^\d+$/.test(m)) {
+                            tokens.push({ type: 'var', id: parseInt(m, 10), raw: m });
+                        } else {
+                            tokens.push({ type: 'char', char: m, raw: m });
+                        }
+                    });
+                }
+            });
+        } else {
+            // スペースがない場合（「あ12」や「1234」など）は、完全に1文字ずつ区切る
+            const chars = s.split('');
+            chars.forEach(ch => {
+                if (/^\d$/.test(ch)) {
+                    tokens.push({ type: 'var', id: parseInt(ch, 10), raw: ch });
+                } else {
+                    tokens.push({ type: 'char', char: ch, raw: ch });
+                }
+            });
+        }
+        return tokens;
     };
 
     // 変換前
     const parsedFromGroup = parseGroup(rawFrom);
     
     // 変換後（カンマや＋などで複数のグループに分割対応）
+    // ★バグ修正: カンマをスペースに変換する処理を削除し、正しく分割するようにしました
     const toGroupsRaw = rawTo.replace(/[，、＋+／/]/g, ',').split(',');
     const parsedToGroups = [];
     
@@ -76,7 +94,6 @@ function searchAnagram() {
     for (let group of parsedToGroups) {
         for (let t of group) {
             if (t.type === 'var' && !fromVarIds.has(t.id)) {
-                // ★エラーメッセージを親切に表示
                 if (t.id >= 10 && parsedFromGroup.length < 10) {
                     countEl.innerHTML = `<span style="color:#e74c3c; font-weight:bold;">エラー: 変換後の数字「${t.id}」が変換前に存在しません。</span><br><span style="font-size:12px;">※複数の単語に分ける場合は<b>「スペース」ではなく「カンマ( , )」</b>で区切ってください。</span>`;
                 } else {
@@ -108,7 +125,7 @@ function searchAnagram() {
     targetWords.forEach(w => {
         const norm = normalizeForAnagram(w, looseMode);
         if (!wordMapTo.has(norm)) {
-            wordMapTo.set(norm, w); // 複数ある場合は代表として1つだけ保持
+            wordMapTo.set(norm, w); 
         }
     });
 
@@ -117,7 +134,7 @@ function searchAnagram() {
     const wordsFrom = targetWords.filter(w => w.length === lenFrom);
 
     let foundPairs = [];
-    let seenPairs = new Set(); // 重複表示防止用
+    let seenPairs = new Set(); 
 
     countEl.innerText = "検索中...";
 
@@ -128,11 +145,11 @@ function searchAnagram() {
         let isValid = true;
         let varMap = new Map(); // 数字ID -> 抽出された文字
 
-        // 1. Fromグループ(変換前)の条件に当てはまるかチェックし、文字を抽出
+        // 1. Fromグループ(変換前)の条件に当てはまるかチェックし、文字を変数に格納
         for (let i = 0; i < parsedFromGroup.length; i++) {
             const t = parsedFromGroup[i];
             if (t.type === 'char') {
-                // 固定文字のチェック（「あ12」の「あ」に当たる部分が一致しているか）
+                // 固定文字のチェック（例：「あ12」の「あ」に当たる部分が一致しているか）
                 const normChar = normalizeForAnagram(t.char, looseMode);
                 if (normA[i] !== normChar) {
                     isValid = false;
@@ -161,8 +178,10 @@ function searchAnagram() {
             let normB = "";
             for (let t of toGroup) {
                 if (t.type === 'char') {
+                    // 固定文字はそのまま結合
                     normB += normalizeForAnagram(t.char, looseMode);
                 } else if (t.type === 'var') {
+                    // 変数の場合は格納された文字を結合
                     normB += varMap.get(t.id);
                 }
             }
@@ -177,7 +196,7 @@ function searchAnagram() {
 
         if (!isValid) return;
 
-        // 自分自身への変換のみの場合は除外（例: いんせき -> いんせき）
+        // 自分自身への変換のみの場合は除外
         if (targetWordsGroup.length === 1 && wordA === targetWordsGroup[0]) return;
 
         // ペアを保存
