@@ -249,3 +249,21 @@ input[type="text"] {
     color: #3498db;
     margin-bottom: 5px;
 }
+
+/* --- 検索中のローディング表示用 --- */
+.searching-text {
+    color: #e67e22;
+    font-weight: bold;
+    display: inline-block;
+    animation: blink 1.5s infinite;
+}
+@keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0.4; }
+    100% { opacity: 1; }
+}
+.loading-area {
+    opacity: 0.5;
+    pointer-events: none;
+    transition: opacity 0.2s;
+}
